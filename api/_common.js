@@ -29,6 +29,7 @@ export function view(state) {
   const m = state.match;
   return {
     players: state.players,
+    pendingStakes: state.pendingStakes || {},
     history: state.history,
     startTokens: state.startTokens,
     pinRequired: Boolean(process.env.GAME_PIN),

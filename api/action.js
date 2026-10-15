@@ -9,7 +9,8 @@ const ACTIONS = {
   corner: (s, b) => game.manualCorner(s, b.delta),
   settle: (s) => game.settle(s),
   abandon: (s) => game.abandon(s),
-  newSeason: (s) => game.newSeason(s),
+  newSeason: (s, b) => game.newSeason(s, b.startTokens),
+  setStake: (s, b) => game.setStake(s, b.id, b.stake),
 };
 
 export default async function handler(req, res) {
@@ -22,9 +23,9 @@ export default async function handler(req, res) {
     const act = ACTIONS[body.type];
     if (!act) return send(res, 400, { error: 'Unknown action' });
     const state = await loadAndPoll();
-    act(state, body);
+    const result = act(state, body);
     await save(state);
-    send(res, 200, view(state));
+    send(res, 200, { ...view(state), result: typeof result === 'string' ? result : undefined });
   } catch (e) {
     send(res, e instanceof game.GameError ? 400 : 500, { error: e.message });
   }

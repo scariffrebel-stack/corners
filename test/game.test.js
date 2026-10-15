@@ -74,3 +74,24 @@ test('shuffle covers every starter', () => {
   }
   assert.equal(seen.size, 3);
 });
+
+test('players set their own pending stakes, which the match then uses', () => {
+  const { s, ids } = setup();
+  g.setStake(s, ids[0], 7);
+  g.setStake(s, ids[1], 3);
+  g.setStake(s, ids[2], 4);
+  g.setStake(s, ids[2], ''); // changes mind and sits out
+  assert.throws(() => g.setStake(s, ids[1], 500), /only has 100/);
+  g.startMatch(s, { fixtureId: 'manual' });
+  assert.deepEqual(s.match.stakes, { [ids[0]]: 7, [ids[1]]: 3 });
+  assert.deepEqual(s.pendingStakes, {});
+  assert.throws(() => g.setStake(s, ids[0], 1), /live match/);
+});
+
+test('a new season can set a different starting amount', () => {
+  const { s, ids } = setup(['Ann', 'Ben']);
+  g.newSeason(s, 250);
+  assert.equal(s.players[ids[0]].tokens, 250);
+  assert.equal(g.addPlayer(s, 'Cal') && s.startTokens, 250);
+  assert.throws(() => g.newSeason(s, 0), /whole number/);
+});

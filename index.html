@@ -63,8 +63,21 @@
 <main>
   <header>
     <h1>CORNERS</h1>
-    <span class="pill hidden" id="livePill">LIVE</span>
+    <div class="row" style="align-items:center">
+      <span class="pill hidden" id="livePill">LIVE</span>
+      <button class="ghost small" id="invite">Invite</button>
+    </div>
   </header>
+
+  <section id="join" class="card hidden">
+    <h2>Who are you?</h2>
+    <p class="meta" style="margin-top:0">Pick your name so this phone knows it's you.</p>
+    <div class="row" id="joinNames"></div>
+    <div class="row" style="margin-top:10px">
+      <input id="joinName" placeholder="New player? Your name" maxlength="30" autocomplete="given-name">
+      <button id="joinBtn">Join</button>
+    </div>
+  </section>
 
   <div id="live" class="hidden">
     <section class="scoreboard">
@@ -110,7 +123,7 @@
       <button class="ghost" id="loadFixtures">Find matches</button>
     </div>
     <div class="row" style="margin-top:8px"><select id="fixture"><option value="">Pick a Premier League match</option><option value="manual" data-label="Test match">Test match (tap corners yourself)</option></select></div>
-    <p class="meta">Each player sets their own stake. Leave it blank to sit this one out.</p>
+    <p class="meta">Everyone sets their own stake on their phone. Leave it blank to sit this one out.</p>
     <ul id="stakes"></ul>
     <div class="row" style="margin-top:12px"><button class="big" id="start">Shuffle and start</button></div>
   </section>
@@ -128,7 +141,8 @@
     <h2>Results</h2>
     <ul id="history"></ul>
     <div class="row" style="margin-top:10px">
-      <button class="ghost small" data-act="newSeason" data-confirm="Reset everyone's tokens and clear the results?">New season</button>
+      <button class="ghost small" id="newSeason">New season</button>
+      <span class="meta" id="startTokensNote" style="align-self:center"></span>
     </div>
   </section>
 
@@ -162,6 +176,7 @@ async function act(type, extra = {}) {
   }
   state = body;
   render();
+  return body;
 }
 
 async function refresh() {
@@ -177,6 +192,12 @@ async function refresh() {
 }
 
 let lastHolder = null;
+let me = null;
+try { me = localStorage.getItem('corners-me'); } catch {}
+function setMe(id) {
+  me = id;
+  try { localStorage.setItem('corners-me', id); } catch {}
+}
 // "Arsenal v Chelsea" -> "ARS v CHE" so it fits the scoreboard
 function shortLabel(label) {
   const parts = String(label).split(' v ');
@@ -212,16 +233,27 @@ function render() {
     $('order').innerHTML = m.order.map((id, i) =>
       `<li class="${id === m.holder ? 'holder' : ''}"><span>${i + 1} · ${esc(name(id))}</span><span class="meta">${m.stakes[id]}</span></li>`).join('');
   } else {
-    const keep = {};
-    document.querySelectorAll('#stakes input').forEach((el) => { keep[el.dataset.id] = el.value; });
-    $('stakes').innerHTML = Object.entries(state.players).map(([id, p]) =>
-      `<li><span>${esc(p.name)} <span class="meta">(${p.tokens})</span></span><input class="stake" type="number" min="1" max="${p.tokens}" inputmode="numeric" data-id="${id}" value="${esc(keep[id] || '')}" placeholder="—"></li>`).join('')
-      || '<li class="meta plain">Add players below first.</li>';
+    const editing = document.activeElement?.closest?.('#stakes');
+    if (!editing) {
+      $('stakes').innerHTML = Object.entries(state.players).map(([id, p]) =>
+        `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${p.tokens} tokens</span></span><input class="stake" type="number" min="0" max="${p.tokens}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${state.pendingStakes[id] ?? ''}" placeholder="—"></li>`).join('')
+        || '<li class="meta plain">Add players below first.</li>';
+    }
+    const staked = Object.keys(state.pendingStakes).length;
+    $('start').textContent = staked >= 2 ? `Shuffle and start · ${staked} in` : 'Shuffle and start';
   }
+
+  const known = me && state.players[me];
+  $('join').classList.toggle('hidden', !!known);
+  if (!known) {
+    $('joinNames').innerHTML = Object.entries(state.players).map(([id, p]) =>
+      `<button class="ghost" data-me="${id}">I'm ${esc(p.name)}</button>`).join('');
+  }
+  $('startTokensNote').textContent = `Everyone starts on ${state.startTokens}`;
 
   const rows = Object.entries(state.players).sort((a, b) => b[1].tokens - a[1].tokens);
   $('table').innerHTML = rows.map(([id, p], i) =>
-    `<li><span>${i + 1}. ${esc(p.name)}</span><span><span class="tok">${p.tokens}</span> <button class="ghost small" data-remove="${id}" title="Remove">✕</button></span></li>`).join('')
+    `<li><span>${i + 1}. ${esc(p.name)}${id === me ? ' (you)' : ''}</span><span><span class="tok">${p.tokens}</span> <button class="ghost small" data-remove="${id}" title="Remove">✕</button></span></li>`).join('')
     || '<li class="meta plain">No players yet.</li>';
 
   $('history').innerHTML = state.history.map((h) => h.abandoned
@@ -233,13 +265,46 @@ function render() {
 document.addEventListener('click', (e) => {
   const b = e.target.closest('button');
   if (!b) return;
-  if (b.dataset.remove) {
+  if (b.dataset.me) {
+    setMe(b.dataset.me);
+    render();
+  } else if (b.dataset.remove) {
     if (confirm(`Remove ${name(b.dataset.remove)} and their tokens?`)) act('removePlayer', { id: b.dataset.remove });
   } else if (b.dataset.act) {
     if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
     act(b.dataset.act, b.dataset.delta ? { delta: Number(b.dataset.delta) } : {});
   }
 });
+
+$('joinBtn').onclick = async () => {
+  const n = $('joinName').value.trim();
+  if (!n) return;
+  const body = await act('addPlayer', { name: n });
+  if (body?.result) { setMe(body.result); $('joinName').value = ''; render(); }
+};
+$('joinName').onkeydown = (e) => { if (e.key === 'Enter') $('joinBtn').click(); };
+
+$('invite').onclick = async () => {
+  const url = location.origin + '/';
+  const text = 'Join our Corners game: whoever holds the badge at full time wins the pot.';
+  try {
+    if (navigator.share) return await navigator.share({ title: 'Corners', text, url });
+  } catch (e) { if (e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); $('invite').textContent = 'Link copied'; }
+  catch { prompt('Copy this link and send it to your friends', url); }
+  setTimeout(() => { $('invite').textContent = 'Invite'; }, 2500);
+};
+
+$('stakes').addEventListener('change', (e) => {
+  const el = e.target.closest('input.stake');
+  if (el) act('setStake', { id: el.dataset.id, stake: el.value === '' ? '' : Number(el.value) });
+});
+
+$('newSeason').onclick = () => {
+  const v = prompt("New season: everyone's tokens reset and the results clear. Starting tokens for each player?", String(state.startTokens));
+  if (v === null) return;
+  act('newSeason', { startTokens: Number(v) });
+};
 
 $('add').onclick = () => {
   const n = $('newName').value.trim();
@@ -261,9 +326,7 @@ $('loadFixtures').onclick = async () => {
 
 $('start').onclick = () => {
   const opt = $('fixture').selectedOptions[0];
-  const stakes = {};
-  document.querySelectorAll('#stakes input').forEach((el) => { if (el.value) stakes[el.dataset.id] = Number(el.value); });
-  act('startMatch', { fixtureId: opt?.value, label: opt?.dataset.label, kickoff: opt?.dataset.kickoff, stakes });
+  act('startMatch', { fixtureId: opt?.value, label: opt?.dataset.label, kickoff: opt?.dataset.kickoff });
 };
 
 refresh();
