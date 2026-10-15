@@ -81,11 +81,16 @@
       <div class="who" id="holder"></div>
       <div class="next" id="next"></div>
       <div class="note" id="feedNote"></div>
+      <div class="row hidden" id="manualControls" style="width:100%;margin-top:8px">
+        <button class="big" data-act="corner" data-delta="1" style="flex:1">+1 Corner</button>
+        <button class="ghost" data-act="corner" data-delta="-1" aria-label="Undo last corner">Undo</button>
+        <button class="ghost" data-act="settle" data-confirm="Blow full time and pay the badge holder?">Full time</button>
+      </div>
     </section>
     <section class="card">
       <h2>Order</h2>
       <ol id="order"></ol>
-      <details style="margin-top:8px">
+      <details id="backup" style="margin-top:8px">
         <summary>Backup controls</summary>
         <p class="meta" style="margin-top:0">Use these only if the live feed is wrong or stuck.</p>
         <div class="row">
@@ -104,7 +109,7 @@
       <input type="date" id="date">
       <button class="ghost" id="loadFixtures">Find matches</button>
     </div>
-    <div class="row" style="margin-top:8px"><select id="fixture"><option value="">Pick a Premier League match</option></select></div>
+    <div class="row" style="margin-top:8px"><select id="fixture"><option value="">Pick a Premier League match</option><option value="manual" data-label="Test match">Test match (tap corners yourself)</option></select></div>
     <p class="meta">Each player sets their own stake. Leave it blank to sit this one out.</p>
     <ul id="stakes"></ul>
     <div class="row" style="margin-top:12px"><button class="big" id="start">Shuffle and start</button></div>
@@ -184,6 +189,7 @@ function render() {
   $('setup').classList.toggle('hidden', !!m);
 
   $('livePill').classList.toggle('hidden', !m || Date.now() < m.kickoff);
+  $('livePill').textContent = m?.fixtureId === 'manual' ? 'TEST' : 'LIVE';
   if (m) {
     if (lastHolder && lastHolder !== m.holder) {
       $('flag').classList.remove('wave'); void $('flag').getBoundingClientRect(); $('flag').classList.add('wave');
@@ -196,7 +202,10 @@ function render() {
     $('corners').textContent = m.corners;
     $('pot').textContent = m.pot;
     const before = Date.now() < m.kickoff;
-    $('feedNote').innerHTML = m.feedError
+    const manual = m.fixtureId === 'manual';
+    $('manualControls').classList.toggle('hidden', !manual);
+    $('backup').classList.toggle('hidden', manual);
+    $('feedNote').innerHTML = manual ? 'Test match · tap +1 Corner each time one is awarded' : m.feedError
       ? `<span class="warn">Live feed problem: ${esc(m.feedError)}</span>`
       : before ? `Kicks off ${new Date(m.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Live feed updates every ${state.pollSeconds}s` + (m.manualAdjust ? ` · ${m.manualAdjust > 0 ? '+' : ''}${m.manualAdjust} by hand` : '');
@@ -238,15 +247,16 @@ $('add').onclick = () => {
 };
 $('newName').onkeydown = (e) => { if (e.key === 'Enter') $('add').click(); };
 
+const TEST_OPTION = '<option value="manual" data-label="Test match">Test match (tap corners yourself)</option>';
 $('date').value = new Date().toISOString().slice(0, 10);
 $('loadFixtures').onclick = async () => {
   $('err').textContent = '';
   const r = await fetch('/api/fixtures?date=' + $('date').value);
   const body = await r.json();
   if (!r.ok || body.error) { $('err').textContent = body.error || 'Could not load matches'; return; }
-  $('fixture').innerHTML = body.fixtures.length
+  $('fixture').innerHTML = TEST_OPTION + (body.fixtures.length
     ? body.fixtures.map((f) => `<option value="${esc(f.id)}" data-label="${esc(f.label)}" data-kickoff="${esc(f.kickoff)}">${esc(f.label)} · ${new Date(f.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</option>`).join('')
-    : '<option value="">No Premier League matches that day</option>';
+    : '<option value="">No Premier League matches that day</option>');
 };
 
 $('start').onclick = () => {

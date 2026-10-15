@@ -10,7 +10,7 @@ export async function loadAndPoll(now = Date.now()) {
   const state = await load();
   const m = state.match;
   let feedError = null;
-  if (m && now >= m.kickoff && now - m.lastPolled >= POLL_MS) {
+  if (m && m.fixtureId !== 'manual' && now >= m.kickoff && now - m.lastPolled >= POLL_MS) {
     m.lastPolled = now;
     await save(state); // claim this poll so other viewers don't also call the feed
     try {
