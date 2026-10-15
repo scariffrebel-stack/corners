@@ -90,14 +90,14 @@
         <line x1="20" y1="8" x2="20" y2="116" stroke="#eaf3ec" stroke-width="5" stroke-linecap="round"></line>
         <path d="M22 10 L84 28 L22 50 Z"></path>
       </svg>
-      <div class="label">HOLDING THE BADGE</div>
+      <div class="label">HOLDING THE FLAG</div>
       <div class="who" id="holder"></div>
       <div class="next" id="next"></div>
       <div class="note" id="feedNote"></div>
       <div class="row hidden" id="manualControls" style="width:100%;margin-top:8px">
         <button class="big" data-act="corner" data-delta="1" style="flex:1">+1 Corner</button>
         <button class="ghost" data-act="corner" data-delta="-1" aria-label="Undo last corner">Undo</button>
-        <button class="ghost" data-act="settle" data-confirm="Blow full time and pay the badge holder?">Full time</button>
+        <button class="ghost" data-act="settle" data-confirm="Blow full time and pay the flag holder?">Full time</button>
       </div>
     </section>
     <section class="card">
@@ -109,7 +109,7 @@
         <div class="row">
           <button class="ghost" data-act="corner" data-delta="1">+1 corner</button>
           <button class="ghost" data-act="corner" data-delta="-1">−1 corner</button>
-          <button class="ghost" data-act="settle" data-confirm="End the match now and pay the badge holder?">Full time</button>
+          <button class="ghost" data-act="settle" data-confirm="End the match now and pay the flag holder?">Full time</button>
           <button class="ghost" data-act="abandon" data-confirm="Call off the match and refund every stake?">Abandon</button>
         </div>
       </details>
@@ -286,7 +286,7 @@ $('joinName').onkeydown = (e) => { if (e.key === 'Enter') $('joinBtn').click(); 
 
 $('invite').onclick = async () => {
   const url = location.origin + '/';
-  const text = 'Join our Corners game: whoever holds the badge at full time wins the pot.';
+  const text = 'Join our Corners game: whoever holds the flag at full time wins the pot.';
   try {
     if (navigator.share) return await navigator.share({ title: 'Corners', text, url });
   } catch (e) { if (e.name === 'AbortError') return; }

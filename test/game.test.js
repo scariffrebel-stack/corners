@@ -9,7 +9,7 @@ function setup(names = ['Ann', 'Ben', 'Cal']) {
 }
 const noShuffle = () => 0.999999; // keeps the order as given
 
-test('badge passes on each corner and the holder at full time takes the pot', () => {
+test('flag passes on each corner and the holder at full time takes the pot', () => {
   const { s, ids } = setup();
   g.startMatch(s, { fixtureId: '1', stakes: { [ids[0]]: 10, [ids[1]]: 5, [ids[2]]: 1 } }, noShuffle);
   assert.deepEqual(s.match.order, ids);
@@ -28,7 +28,7 @@ test('no corners means the starter wins', () => {
   assert.equal(g.applyFeed(s, { corners: 0, status: 'FT' }).winner, ids[0]);
 });
 
-test('a corner the feed takes back moves the badge back', () => {
+test('a corner the feed takes back moves the flag back', () => {
   const { s, ids } = setup();
   g.startMatch(s, { fixtureId: '1', stakes: { [ids[0]]: 1, [ids[1]]: 1, [ids[2]]: 1 } }, noShuffle);
   g.applyFeed(s, { corners: 2, status: '1H' });
