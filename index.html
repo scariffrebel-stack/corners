@@ -4,71 +4,101 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Corners</title>
+<meta name="theme-color" content="#0b1f14">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0f1a14; --card: #18271e; --line: #2a3d31; --text: #eef5ef; --muted: #9db3a3;
-    --accent: #f5c542; --good: #4ade80; --bad: #f87171;
+    --bg: #0b1f14; --panel: #12301f; --deep: #0e2719; --line: #1d4430;
+    --text: #eaf3ec; --soft: #c9ddcf; --muted: #9fc1aa; --accent: #ffd23f; --bad: #ff8a80;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, sans-serif; }
-  main { max-width: 560px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 22px; margin: 4px 0 16px; }
-  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
-  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
-  .badge { text-align: center; padding: 22px 12px; }
-  .badge .flag { font-size: 44px; }
-  .badge .who { font-size: 30px; font-weight: 700; color: var(--accent); margin: 4px 0; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 'Barlow', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  main { max-width: 480px; margin: 0 auto; padding: 0 0 32px; }
+  .cond { font-family: 'Barlow Condensed', 'Barlow', sans-serif; }
+  header { padding: 20px 20px 0; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { margin: 0; font: 800 22px 'Barlow Condensed', sans-serif; letter-spacing: .08em; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--bg); background: var(--accent); padding: 4px 10px; border-radius: 999px; }
+  .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--bg); }
+  h2 { font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  section { margin: 16px 20px 0; }
+  section.card { background: var(--deep); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .scoreboard { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--panel); border-radius: 12px; overflow: hidden; }
+  .scoreboard > div { padding: 12px 6px; text-align: center; border-right: 1px solid var(--line); min-width: 0; }
+  .scoreboard > div:last-child { border-right: 0; }
+  .scoreboard span { display: block; font-size: 12px; letter-spacing: .06em; color: var(--muted); }
+  .scoreboard b { display: block; font: 700 20px 'Barlow Condensed', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 0 20px; text-align: center; }
+  .hero .label { font-size: 14px; letter-spacing: .14em; color: var(--muted); }
+  .hero .who { font: 800 clamp(52px, 18vw, 76px)/0.95 'Barlow Condensed', sans-serif; color: var(--accent); text-transform: uppercase; word-break: break-word; }
+  .hero .next { font-size: 15px; color: var(--soft); }
+  .hero .next b { color: #fff; }
+  .flag path { fill: var(--accent); }
+  .flag.wave { animation: wave .6s ease-in-out 2; transform-origin: 20px 116px; }
+  @keyframes wave { 50% { transform: rotate(-8deg); } }
+  .note { font-size: 13px; color: var(--muted); text-align: center; }
+  ol, ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  li { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border-radius: 10px; background: var(--panel); }
+  li.holder { background: var(--accent); color: var(--bg); font-weight: 600; }
+  li.plain { background: none; padding: 4px 0; min-height: 0; }
   .meta { color: var(--muted); font-size: 14px; }
-  .stats { display: flex; justify-content: center; gap: 28px; margin-top: 12px; }
-  .stats b { display: block; font-size: 24px; }
-  ol, ul { margin: 0; padding: 0; list-style: none; }
-  li { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); gap: 8px; }
-  li:last-child { border-bottom: 0; }
-  li.holder { color: var(--accent); font-weight: 700; }
-  button, input, select { font: inherit; border-radius: 10px; border: 1px solid var(--line); padding: 10px 12px; background: #0c140f; color: var(--text); }
-  button { background: var(--accent); color: #1b1b1b; border: 0; font-weight: 600; cursor: pointer; }
-  button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
-  button.small { padding: 4px 10px; font-size: 14px; }
+  li.holder .meta { color: var(--bg); }
+  button, input, select { font: inherit; border-radius: 10px; border: 1px solid var(--line); min-height: 44px; padding: 10px 12px; background: var(--bg); color: var(--text); }
+  button { background: var(--accent); color: var(--bg); border: 0; font-weight: 700; cursor: pointer; }
+  button.big { width: 100%; font: 800 20px 'Barlow Condensed', sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+  button.ghost { background: transparent; color: var(--soft); border: 1px solid var(--line); font-weight: 500; }
+  button.small { min-height: 36px; padding: 4px 10px; font-size: 14px; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
   .row > input, .row > select { flex: 1; min-width: 0; }
-  input.stake { width: 80px; flex: none; }
-  .err { color: var(--bad); font-size: 14px; min-height: 1em; }
-  .warn { color: var(--accent); font-size: 14px; }
-  .hidden { display: none; }
-  details summary { cursor: pointer; color: var(--muted); }
+  input.stake { width: 84px; flex: none; text-align: center; min-height: 40px; }
+  .err { color: var(--bad); font-size: 14px; margin: 16px 20px 0; }
+  .err:empty { display: none; }
+  .warn { color: var(--accent); }
+  .hidden { display: none !important; }
+  details summary { cursor: pointer; color: var(--muted); min-height: 44px; display: flex; align-items: center; }
+  .ladder li .tok { font: 700 18px 'Barlow Condensed', sans-serif; }
 </style>
 </head>
 <body>
 <main>
-  <h1>⚑ Corners</h1>
+  <header>
+    <h1>CORNERS</h1>
+    <span class="pill hidden" id="livePill">LIVE</span>
+  </header>
 
-  <section id="live" class="hidden">
-    <div class="badge">
-      <div class="flag">⚑</div>
-      <div class="meta">Corner badge</div>
+  <div id="live" class="hidden">
+    <section class="scoreboard">
+      <div><span>MATCH</span><b id="matchLabel"></b></div>
+      <div><span>CORNERS</span><b id="corners">0</b></div>
+      <div><span>POT</span><b id="pot">0</b></div>
+    </section>
+    <section class="hero">
+      <svg class="flag" id="flag" width="96" height="120" viewBox="0 0 96 120" aria-hidden="true">
+        <line x1="20" y1="8" x2="20" y2="116" stroke="#eaf3ec" stroke-width="5" stroke-linecap="round"></line>
+        <path d="M22 10 L84 28 L22 50 Z"></path>
+      </svg>
+      <div class="label">HOLDING THE BADGE</div>
       <div class="who" id="holder"></div>
-      <div class="meta" id="matchLabel"></div>
-      <div class="stats">
-        <div><b id="corners">0</b><span class="meta">corners</span></div>
-        <div><b id="pot">0</b><span class="meta">tokens in pot</span></div>
-      </div>
-      <div class="meta" id="feedNote" style="margin-top:10px"></div>
-    </div>
-    <h2>Order</h2>
-    <ol id="order"></ol>
-    <details style="margin-top:12px">
-      <summary>Backup controls</summary>
-      <p class="meta">Use these only if the live feed is wrong or stuck.</p>
-      <div class="row">
-        <button class="ghost" data-act="corner" data-delta="1">+1 corner</button>
-        <button class="ghost" data-act="corner" data-delta="-1">−1 corner</button>
-        <button class="ghost" data-act="settle" data-confirm="End the match now and pay the badge holder?">Full time</button>
-        <button class="ghost" data-act="abandon" data-confirm="Call off the match and refund every stake?">Abandon</button>
-      </div>
-    </details>
-  </section>
+      <div class="next" id="next"></div>
+      <div class="note" id="feedNote"></div>
+    </section>
+    <section class="card">
+      <h2>Order</h2>
+      <ol id="order"></ol>
+      <details style="margin-top:8px">
+        <summary>Backup controls</summary>
+        <p class="meta" style="margin-top:0">Use these only if the live feed is wrong or stuck.</p>
+        <div class="row">
+          <button class="ghost" data-act="corner" data-delta="1">+1 corner</button>
+          <button class="ghost" data-act="corner" data-delta="-1">−1 corner</button>
+          <button class="ghost" data-act="settle" data-confirm="End the match now and pay the badge holder?">Full time</button>
+          <button class="ghost" data-act="abandon" data-confirm="Call off the match and refund every stake?">Abandon</button>
+        </div>
+      </details>
+    </section>
+  </div>
 
-  <section id="setup" class="hidden">
+  <section id="setup" class="card hidden">
     <h2>New match</h2>
     <div class="row">
       <input type="date" id="date">
@@ -77,19 +107,19 @@
     <div class="row" style="margin-top:8px"><select id="fixture"><option value="">Pick a Premier League match</option></select></div>
     <p class="meta">Each player sets their own stake. Leave it blank to sit this one out.</p>
     <ul id="stakes"></ul>
-    <div class="row" style="margin-top:10px"><button id="start">Shuffle and start</button></div>
+    <div class="row" style="margin-top:12px"><button class="big" id="start">Shuffle and start</button></div>
   </section>
 
-  <section>
+  <section class="card">
     <h2>Season table</h2>
-    <ul id="table"></ul>
+    <ul id="table" class="ladder"></ul>
     <div class="row" style="margin-top:10px">
       <input id="newName" placeholder="Add a player" maxlength="30">
       <button id="add">Add</button>
     </div>
   </section>
 
-  <section>
+  <section class="card">
     <h2>Results</h2>
     <ul id="history"></ul>
     <div class="row" style="margin-top:10px">
@@ -141,40 +171,54 @@ async function refresh() {
   }
 }
 
+let lastHolder = null;
+// "Arsenal v Chelsea" -> "ARS v CHE" so it fits the scoreboard
+function shortLabel(label) {
+  const parts = String(label).split(' v ');
+  return parts.length === 2 ? parts.map((t) => t.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase()).join(' v ') : label;
+}
+
 function render() {
   const m = state.match;
   $('live').classList.toggle('hidden', !m);
   $('setup').classList.toggle('hidden', !!m);
 
+  $('livePill').classList.toggle('hidden', !m || Date.now() < m.kickoff);
   if (m) {
+    if (lastHolder && lastHolder !== m.holder) {
+      $('flag').classList.remove('wave'); void $('flag').getBoundingClientRect(); $('flag').classList.add('wave');
+    }
+    lastHolder = m.holder;
+    const nextId = m.order[(m.order.indexOf(m.holder) + 1) % m.order.length];
     $('holder').textContent = name(m.holder);
-    $('matchLabel').textContent = m.label;
+    $('next').innerHTML = `Next corner passes it to <b>${esc(name(nextId))}</b>`;
+    $('matchLabel').textContent = shortLabel(m.label);
     $('corners').textContent = m.corners;
     $('pot').textContent = m.pot;
     const before = Date.now() < m.kickoff;
     $('feedNote').innerHTML = m.feedError
       ? `<span class="warn">Live feed problem: ${esc(m.feedError)}</span>`
-      : before ? `Kicks off ${new Date(m.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. ${esc(name(m.order[0]))} starts with the badge.`
-      : `Live · status ${esc(m.feedStatus)} · checks every ${state.pollSeconds}s` + (m.manualAdjust ? ` · ${m.manualAdjust > 0 ? '+' : ''}${m.manualAdjust} by hand` : '');
+      : before ? `Kicks off ${new Date(m.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : `Live feed updates every ${state.pollSeconds}s` + (m.manualAdjust ? ` · ${m.manualAdjust > 0 ? '+' : ''}${m.manualAdjust} by hand` : '');
     $('order').innerHTML = m.order.map((id, i) =>
-      `<li class="${id === m.holder ? 'holder' : ''}"><span>${i + 1}. ${esc(name(id))}${id === m.holder ? ' ⚑' : ''}</span><span class="meta">${m.stakes[id]} staked</span></li>`).join('');
+      `<li class="${id === m.holder ? 'holder' : ''}"><span>${i + 1} · ${esc(name(id))}</span><span class="meta">${m.stakes[id]}</span></li>`).join('');
   } else {
     const keep = {};
     document.querySelectorAll('#stakes input').forEach((el) => { keep[el.dataset.id] = el.value; });
     $('stakes').innerHTML = Object.entries(state.players).map(([id, p]) =>
       `<li><span>${esc(p.name)} <span class="meta">(${p.tokens})</span></span><input class="stake" type="number" min="1" max="${p.tokens}" inputmode="numeric" data-id="${id}" value="${esc(keep[id] || '')}" placeholder="—"></li>`).join('')
-      || '<li class="meta">Add players below first.</li>';
+      || '<li class="meta plain">Add players below first.</li>';
   }
 
   const rows = Object.entries(state.players).sort((a, b) => b[1].tokens - a[1].tokens);
   $('table').innerHTML = rows.map(([id, p], i) =>
-    `<li><span>${i + 1}. ${esc(p.name)}</span><span><b>${p.tokens}</b> <button class="ghost small" data-remove="${id}" title="Remove">✕</button></span></li>`).join('')
-    || '<li class="meta">No players yet.</li>';
+    `<li><span>${i + 1}. ${esc(p.name)}</span><span><span class="tok">${p.tokens}</span> <button class="ghost small" data-remove="${id}" title="Remove">✕</button></span></li>`).join('')
+    || '<li class="meta plain">No players yet.</li>';
 
   $('history').innerHTML = state.history.map((h) => h.abandoned
     ? `<li><span>${esc(h.label)}</span><span class="meta">abandoned, stakes refunded</span></li>`
     : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corners</span></span><span>${esc(name(h.winner))} won <b>${h.pot}</b></span></li>`).join('')
-    || '<li class="meta">No matches yet.</li>';
+    || '<li class="meta plain">No matches yet.</li>';
 }
 
 document.addEventListener('click', (e) => {
