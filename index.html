@@ -199,7 +199,7 @@ $('loadFixtures').onclick = async () => {
   $('err').textContent = '';
   const r = await fetch('/api/fixtures?date=' + $('date').value);
   const body = await r.json();
-  if (!r.ok) { $('err').textContent = body.error; return; }
+  if (!r.ok || body.error) { $('err').textContent = body.error || 'Could not load matches'; return; }
   $('fixture').innerHTML = body.fixtures.length
     ? body.fixtures.map((f) => `<option value="${esc(f.id)}" data-label="${esc(f.label)}" data-kickoff="${esc(f.kickoff)}">${esc(f.label)} · ${new Date(f.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</option>`).join('')
     : '<option value="">No Premier League matches that day</option>';
