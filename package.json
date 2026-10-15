@@ -1,0 +1,12 @@
+{
+  "name": "corners-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pass the Corner badge on every live Premier League corner. Badge holder at full time takes the pot.",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": { "node": ">=18" }
+}

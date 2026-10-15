@@ -1,0 +1,31 @@
+import { save } from '../lib/store.js';
+import * as game from '../lib/game.js';
+import { loadAndPoll, view, send, readBody } from './_common.js';
+
+const ACTIONS = {
+  addPlayer: (s, b) => game.addPlayer(s, b.name),
+  removePlayer: (s, b) => game.removePlayer(s, b.id),
+  startMatch: (s, b) => game.startMatch(s, b),
+  corner: (s, b) => game.manualCorner(s, b.delta),
+  settle: (s) => game.settle(s),
+  abandon: (s) => game.abandon(s),
+  newSeason: (s) => game.newSeason(s),
+};
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
+  try {
+    const body = await readBody(req);
+    if (process.env.GAME_PIN && body.pin !== process.env.GAME_PIN) {
+      return send(res, 403, { error: 'Wrong PIN' });
+    }
+    const act = ACTIONS[body.type];
+    if (!act) return send(res, 400, { error: 'Unknown action' });
+    const state = await loadAndPoll();
+    act(state, body);
+    await save(state);
+    send(res, 200, view(state));
+  } catch (e) {
+    send(res, e instanceof game.GameError ? 400 : 500, { error: e.message });
+  }
+}
