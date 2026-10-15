@@ -6,6 +6,6 @@ export default async function handler(req, res) {
   try {
     send(res, 200, { fixtures: await fixturesOn(date) });
   } catch (e) {
-    send(res, 502, { error: e.message });
+    send(res, 502, { error: e.message, fixtures: [] });
   }
 }
