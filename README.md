@@ -14,6 +14,15 @@ time either team gets a corner. Whoever holds it at full time takes the whole po
 6. If the live feed takes a corner back, the flag moves back too.
 7. An abandoned or postponed match refunds every stake.
 
+### Side pot: guess the corners
+
+Optional, alongside the flag game, and open to players who sit the flag game out.
+
+1. Before the match, guess the total corners and stake tokens on it. Your flag stake and your guess stake both come out of the same balance.
+2. Each phone sees only its own guess. Everyone's guesses are revealed when the match starts, and they're locked from then on.
+3. At full time the closest guess takes the whole side pot. A tie splits it, with any odd token going to whoever guessed first.
+4. The side pot needs at least two guesses. A lone guess is dropped and costs nothing. An abandoned match refunds the side pot too.
+
 ## How it works
 
 - The corner count comes from [API-Football](https://www.api-football.com/)'s live "Corner Kicks" statistic.

@@ -95,3 +95,65 @@ test('a new season can set a different starting amount', () => {
   assert.equal(g.addPlayer(s, 'Cal') && s.startTokens, 250);
   assert.throws(() => g.newSeason(s, 0), /whole number/);
 });
+
+test('closest corners guess takes the side pot, on top of the flag pot', () => {
+  const { s, ids } = setup();
+  g.setStake(s, ids[0], 10);
+  g.setStake(s, ids[1], 10);
+  g.setGuess(s, ids[0], 8, 5);
+  g.setGuess(s, ids[1], 12, 5);
+  g.setGuess(s, ids[2], 10, 4); // not in the flag game, still guesses
+  g.startMatch(s, { fixtureId: 'manual' }, noShuffle);
+  assert.equal(s.players[ids[0]].tokens, 85);
+  assert.equal(s.players[ids[2]].tokens, 96);
+  assert.equal(g.sidePot(s.match), 14);
+  assert.deepEqual(s.pendingGuesses, {});
+  const r = g.applyFeed(s, { corners: 11, status: 'FT' }); // 11 % 2 = 1, so Ben holds the flag
+  assert.deepEqual(r.guessWinners, [ids[1], ids[2]]); // 12 and 10 are both one away
+  assert.equal(s.players[ids[0]].tokens, 85);
+  assert.equal(s.players[ids[1]].tokens, 85 + 20 + 7);
+  assert.equal(s.players[ids[2]].tokens, 96 + 7);
+});
+
+test('an odd side pot split goes to whoever guessed first', () => {
+  const { s, ids } = setup();
+  g.setGuess(s, ids[0], 9, 2);
+  g.setGuess(s, ids[1], 11, 3);
+  g.startMatch(s, { fixtureId: 'manual', stakes: { [ids[0]]: 1, [ids[2]]: 1 } }, noShuffle);
+  const r = g.applyFeed(s, { corners: 10, status: 'FT' });
+  assert.deepEqual(r.guessWinners, [ids[0], ids[1]]);
+  assert.equal(s.players[ids[0]].tokens, 100 - 1 - 2 + 2 + 3); // won the 2-token flag pot (10 % 2 = 0) and 3 of the 5
+  assert.equal(s.players[ids[1]].tokens, 100 - 3 + 2);
+});
+
+test('a lone guess has nobody to beat, so it is dropped and costs nothing', () => {
+  const { s, ids } = setup(['Ann', 'Ben']);
+  g.setGuess(s, ids[0], 9, 20);
+  g.startMatch(s, { fixtureId: 'manual', stakes: { [ids[0]]: 1, [ids[1]]: 1 } });
+  assert.equal(s.players[ids[0]].tokens, 99);
+  assert.equal(g.sidePot(s.match), 0);
+  assert.equal(g.settle(s).sidePot, undefined);
+});
+
+test('guess stakes and flag stakes share one balance', () => {
+  const { s, ids } = setup();
+  g.setStake(s, ids[0], 70);
+  assert.throws(() => g.setGuess(s, ids[0], 10, 31), /only has 30 tokens left/);
+  g.setGuess(s, ids[0], 10, 30);
+  assert.throws(() => g.setStake(s, ids[0], 71), /only has 70 tokens left/);
+  assert.throws(() => g.setGuess(s, ids[1], 1.5, 1), /whole number of corners/);
+  assert.throws(() => g.setGuess(s, ids[1], -1, 1), /whole number of corners/);
+  g.setGuess(s, ids[0], 10, ''); // withdraws
+  assert.deepEqual(s.pendingGuesses, {});
+});
+
+test('guesses lock at the start and abandoning refunds them', () => {
+  const { s, ids } = setup(['Ann', 'Ben']);
+  g.setGuess(s, ids[0], 9, 10);
+  g.setGuess(s, ids[1], 7, 10);
+  g.startMatch(s, { fixtureId: 'manual', stakes: { [ids[0]]: 5, [ids[1]]: 5 } });
+  assert.throws(() => g.setGuess(s, ids[0], 8, 10), /locked/);
+  g.abandon(s);
+  assert.equal(s.players[ids[0]].tokens, 100);
+  assert.equal(s.players[ids[1]].tokens, 100);
+});

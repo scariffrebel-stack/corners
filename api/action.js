@@ -11,6 +11,7 @@ const ACTIONS = {
   abandon: (s) => game.abandon(s),
   newSeason: (s, b) => game.newSeason(s, b.startTokens),
   setStake: (s, b) => game.setStake(s, b.id, b.stake),
+  setGuess: (s, b) => game.setGuess(s, b.id, b.guess, b.stake),
 };
 
 export default async function handler(req, res) {
@@ -25,7 +26,7 @@ export default async function handler(req, res) {
     const state = await loadAndPoll();
     const result = act(state, body);
     await save(state);
-    send(res, 200, { ...view(state), result: typeof result === 'string' ? result : undefined });
+    send(res, 200, { ...view(state, body.me), result: typeof result === 'string' ? result : undefined });
   } catch (e) {
     send(res, e instanceof game.GameError ? 400 : 500, { error: e.message });
   }

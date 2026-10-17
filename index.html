@@ -58,6 +58,7 @@
   .warn { color: var(--accent); }
   .hidden { display: none !important; }
   details summary { cursor: pointer; color: var(--muted); min-height: 44px; display: flex; align-items: center; }
+  input.guess { width: 96px; flex: none; text-align: center; }
   .ladder li .tok { font: 700 18px 'Barlow Condensed', sans-serif; }
 </style>
 </head>
@@ -102,6 +103,10 @@
         <button class="ghost" data-act="settle" data-confirm="Blow full time and pay the flag holder?">Full time</button>
       </div>
     </section>
+    <section class="card hidden" id="sideCard">
+      <h2 id="sideTitle">Side pot</h2>
+      <ul id="sideList"></ul>
+    </section>
     <section class="card">
       <h2>Order</h2>
       <ol id="order"></ol>
@@ -127,6 +132,15 @@
     <div class="row" style="margin-top:8px"><select id="fixture"><option value="">Pick a Premier League match</option><option value="manual" data-label="Test match">Test match (tap corners yourself)</option></select></div>
     <p class="meta">Everyone sets their own stake on their phone. Leave it blank to sit this one out.</p>
     <ul id="stakes"></ul>
+    <h2 style="margin-top:18px">Side pot · guess the corners</h2>
+    <p class="meta" style="margin-top:0">Optional. Guess the total corners and stake some tokens on it. Closest guess takes the side pot, ties split it. Guesses stay hidden until the match starts.</p>
+    <div class="row" id="myGuess">
+      <input class="guess" id="guessNum" type="number" min="0" max="99" inputmode="numeric" placeholder="Corners" aria-label="Your corners guess">
+      <input class="guess" id="guessStake" type="number" min="1" inputmode="numeric" placeholder="Tokens" aria-label="Tokens on your guess">
+      <button id="guessSave" style="flex:1">Lock in guess</button>
+    </div>
+    <p class="meta hidden" id="guessNeedMe" style="margin:0">Pick your name above to make a guess.</p>
+    <ul id="guessList" style="margin-top:8px"></ul>
     <div class="row" style="margin-top:12px"><button class="big" id="start">Shuffle and start</button></div>
   </section>
 
@@ -169,7 +183,7 @@ function pin() {
 
 async function act(type, extra = {}) {
   $('err').textContent = '';
-  const r = await fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, pin: pin(), ...extra }) });
+  const r = await fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, pin: pin(), me, ...extra }) });
   const body = await r.json();
   if (!r.ok) {
     if (r.status === 403) try { localStorage.removeItem('corners-pin'); } catch {}
@@ -183,7 +197,7 @@ async function act(type, extra = {}) {
 
 async function refresh() {
   try {
-    const r = await fetch('/api/state');
+    const r = await fetch('/api/state' + (me ? '?me=' + encodeURIComponent(me) : ''));
     const body = await r.json();
     if (!r.ok) throw new Error(body.error);
     state = body;
@@ -232,6 +246,13 @@ function render() {
       ? `<span class="warn">Live feed problem: ${esc(m.feedError)}</span>`
       : before ? `Kicks off ${new Date(m.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Live feed updates every ${state.pollSeconds}s` + (m.manualAdjust ? ` · ${m.manualAdjust > 0 ? '+' : ''}${m.manualAdjust} by hand` : '');
+    const guessed = Object.entries(m.guesses).sort((a, b) => a[1].guess - b[1].guess);
+    $('sideCard').classList.toggle('hidden', !guessed.length);
+    $('sideTitle').textContent = `Side pot · ${m.sidePot} tokens · closest takes it`;
+    $('sideList').innerHTML = guessed.map(([id, g]) => {
+      const off = g.guess - m.corners;
+      return `<li class="${m.closest.includes(id) ? 'holder' : ''}"><span>${esc(name(id))}${id === me ? ' (you)' : ''} · <b>${g.guess}</b></span><span class="meta">${off === 0 ? 'spot on' : `${Math.abs(off)} ${off > 0 ? 'over' : 'under'}`} · ${g.stake} tokens</span></li>`;
+    }).join('');
     $('order').innerHTML = m.order.map((id, i) =>
       `<li class="${id === m.holder ? 'holder' : ''}"><span>${i + 1} · ${esc(name(id))}</span><span class="meta">${m.stakes[id]}</span></li>`).join('');
   } else {
@@ -241,6 +262,17 @@ function render() {
         `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${p.tokens} tokens</span></span><input class="stake" type="number" min="0" max="${p.tokens}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${state.pendingStakes[id] ?? ''}" placeholder="—"></li>`).join('')
         || '<li class="meta plain">Add players below first.</li>';
     }
+    const meKnown = me && state.players[me];
+    const mine = meKnown && state.pendingGuesses[me];
+    $('myGuess').classList.toggle('hidden', !meKnown);
+    $('guessNeedMe').classList.toggle('hidden', !!meKnown);
+    if (!document.activeElement?.closest?.('#myGuess')) {
+      $('guessNum').value = mine?.guess ?? '';
+      $('guessStake').value = mine?.stake ?? '';
+    }
+    $('guessSave').textContent = mine ? 'Change guess' : 'Lock in guess';
+    $('guessList').innerHTML = Object.entries(state.pendingGuesses).map(([id, g]) =>
+      `<li><span>${esc(name(id))}${id === me ? ` (you) · <b>${g.guess}</b>` : ' · guessed'}</span><span class="meta">${g.stake} tokens${id === me ? ` <button class="ghost small" id="guessClear">Withdraw</button>` : ''}</span></li>`).join('');
     const staked = Object.keys(state.pendingStakes).length;
     $('start').textContent = staked >= 2 ? `Shuffle and start · ${staked} in` : 'Shuffle and start';
   }
@@ -260,7 +292,8 @@ function render() {
 
   $('history').innerHTML = state.history.map((h) => h.abandoned
     ? `<li><span>${esc(h.label)}</span><span class="meta">abandoned, stakes refunded</span></li>`
-    : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corners</span></span><span>${esc(name(h.winner))} won <b>${h.pot}</b></span></li>`).join('')
+    : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corners</span></span><span style="text-align:right">${esc(name(h.winner))} won <b>${h.pot}</b>${h.sidePot
+        ? `<br><span class="meta">Side pot ${h.sidePot}: ${h.guessWinners.map((id) => `${esc(name(id))} (${h.guesses[id].guess})`).join(', ')}</span>` : ''}</span></li>`).join('')
     || '<li class="meta plain">No matches yet.</li>';
 }
 
@@ -272,6 +305,8 @@ document.addEventListener('click', (e) => {
     render();
   } else if (b.dataset.remove) {
     if (confirm(`Remove ${name(b.dataset.remove)} and their tokens?`)) act('removePlayer', { id: b.dataset.remove });
+  } else if (b.id === 'guessClear') {
+    act('setGuess', { id: me, guess: '', stake: '' });
   } else if (b.dataset.act) {
     if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
     act(b.dataset.act, b.dataset.delta ? { delta: Number(b.dataset.delta) } : {});
@@ -301,6 +336,13 @@ $('stakes').addEventListener('change', (e) => {
   const el = e.target.closest('input.stake');
   if (el) act('setStake', { id: el.dataset.id, stake: el.value === '' ? '' : Number(el.value) });
 });
+
+$('guessSave').onclick = () => {
+  const guess = $('guessNum').value, stake = $('guessStake').value;
+  if (guess === '' || stake === '') { $('err').textContent = 'Enter your corners guess and how many tokens to put on it'; return; }
+  document.activeElement?.blur();
+  act('setGuess', { id: me, guess: Number(guess), stake: Number(stake) });
+};
 
 $('newSeason').onclick = () => {
   const v = prompt("New season: everyone's tokens reset and the results clear. Starting tokens for each player?", String(state.startTokens));

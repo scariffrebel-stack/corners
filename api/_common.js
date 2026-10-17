@@ -1,5 +1,5 @@
 import { load, save } from '../lib/store.js';
-import { applyFeed, holderId, pot, cornerCount } from '../lib/game.js';
+import { applyFeed, holderId, pot, cornerCount, sidePot, closestIds } from '../lib/game.js';
 import { cornersFor } from '../lib/feed.js';
 
 // 80s keeps one ~2 hour match under API-Football's free 100 requests a day.
@@ -25,11 +25,21 @@ export async function loadAndPoll(now = Date.now()) {
   return state;
 }
 
-export function view(state) {
+// Corner guesses stay secret until the match starts: each phone sees only its own number.
+function hiddenGuesses(state, me) {
+  const out = {};
+  for (const [id, g] of Object.entries(state.pendingGuesses || {})) {
+    out[id] = id === me ? g : { stake: g.stake };
+  }
+  return out;
+}
+
+export function view(state, me) {
   const m = state.match;
   return {
     players: state.players,
     pendingStakes: state.pendingStakes || {},
+    pendingGuesses: hiddenGuesses(state, me),
     history: state.history,
     startTokens: state.startTokens,
     pinRequired: Boolean(process.env.GAME_PIN),
@@ -39,6 +49,9 @@ export function view(state) {
       pot: pot(m),
       corners: cornerCount(m),
       holder: holderId(m),
+      guesses: m.guesses || {},
+      sidePot: sidePot(m),
+      closest: closestIds(m),
     },
   };
 }
