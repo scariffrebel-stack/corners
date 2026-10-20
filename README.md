@@ -37,6 +37,18 @@ before competitions carries on as its first season, with every balance and resul
 6. If the live feed takes a corner back, the flag moves back too.
 7. An abandoned or postponed match refunds every stake.
 
+### Golden corner
+
+Optional, ticked when starting a match. A secret corner from 1 to 12 is picked at random. Whoever the
+flag goes to on that corner takes a quarter of the pot at full time, and the holder gets the rest.
+The number shows once it's been taken. If the match never gets that many corners, the holder takes it all.
+
+### During the match
+
+- The match log lists every corner with its minute, whose corner it was, and who the flag went to.
+  A corner the feed takes back gets its own line.
+- Tap a reaction (😱 🍺 🔥 😂 👏 😤) to let everyone else watching see it.
+
 ### Side pot: guess the corners
 
 Optional, alongside the flag game, and open to players who sit the flag game out.

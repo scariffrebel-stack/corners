@@ -15,6 +15,7 @@ const ACTIONS = {
   endCompetition: (s, b) => game.endCompetition(s, b.id),
   setStake: (s, b) => game.setStake(s, b.id, b.stake),
   setGuess: (s, b) => game.setGuess(s, b.id, b.guess, b.stake),
+  react: (s, b) => game.react(s, b.id, b.emoji),
 };
 
 export default async function handler(req, res) {

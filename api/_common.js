@@ -1,6 +1,6 @@
 import { load, save, NoGroupError } from '../lib/store.js';
 import { GameError } from '../lib/game.js';
-import { applyFeed, holderId, pot, cornerCount, sidePot, closestIds, closeFinished, standings } from '../lib/game.js';
+import { applyFeed, holderId, pot, cornerCount, sidePot, closestIds, closeFinished, standings, goldenId, goldenShare } from '../lib/game.js';
 import { cornersFor } from '../lib/feed.js';
 
 // 80s keeps one ~2 hour match under API-Football's free 100 requests a day.
@@ -60,6 +60,10 @@ export function view(state, me) {
       guesses: m.guesses || {},
       sidePot: sidePot(m),
       closest: closestIds(m),
+      // The golden corner stays secret until it's taken.
+      golden: m.golden && (goldenId(m)
+        ? { corner: m.golden.corner, holder: goldenId(m), bonus: goldenShare(m) }
+        : { secret: true, bonus: goldenShare(m) }),
     },
   };
 }

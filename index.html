@@ -63,6 +63,14 @@
   .groupname { display: block; max-width: 100%; margin: 12px 20px 0; min-height: 36px; padding: 4px 12px; font-size: 14px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   li.group { cursor: pointer; }
   li.group.current { outline: 2px solid var(--accent); }
+  label.check { display: flex; gap: 10px; align-items: center; min-height: 44px; color: var(--soft); font-size: 15px; }
+  label.check input { min-height: 0; width: 22px; height: 22px; accent-color: var(--accent); flex: none; }
+  .reactbar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .reactbar button { font-size: 22px; padding: 6px 0; background: var(--panel); border: 1px solid var(--line); }
+  .reacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 0; }
+  .reacts span { background: var(--panel); border-radius: 999px; padding: 3px 10px; font-size: 14px; animation: pop .4s ease-out; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } }
+  .gold { color: var(--accent); font-weight: 600; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
@@ -127,15 +135,24 @@
       <div class="next" id="next"></div>
       <div class="note" id="feedNote"></div>
       <div class="note" id="matchComp"></div>
+      <div class="note gold hidden" id="goldenNote"></div>
       <div class="row hidden" id="manualControls" style="width:100%;margin-top:8px">
         <button class="big" data-act="corner" data-delta="1" style="flex:1">+1 Corner</button>
         <button class="ghost" data-act="corner" data-delta="-1" aria-label="Undo last corner">Undo</button>
         <button class="ghost" data-act="settle" data-confirm="Blow full time and pay the flag holder?">Full time</button>
       </div>
     </section>
+    <section class="card" id="reactCard">
+      <div class="reactbar" id="reactBar"></div>
+      <div class="reacts" id="reacts"></div>
+    </section>
     <section class="card hidden" id="sideCard">
       <h2 id="sideTitle">Side pot</h2>
       <ul id="sideList"></ul>
+    </section>
+    <section class="card">
+      <h2>Match log</h2>
+      <ul id="matchLog"></ul>
     </section>
     <section class="card">
       <h2>Order</h2>
@@ -200,7 +217,8 @@
     </div>
     <p class="meta hidden" id="guessNeedMe" style="margin:0">Pick your name above to make a guess.</p>
     <ul id="guessList" style="margin-top:8px"></ul>
-    <div class="row" style="margin-top:12px"><button class="big" id="start">Shuffle and start</button></div>
+    <label class="check" style="margin-top:12px"><input type="checkbox" id="golden"> Golden corner: a secret corner from 1 to 12. Whoever gets the flag on it takes a quarter of the pot.</label>
+    <div class="row" style="margin-top:8px"><button class="big" id="start">Shuffle and start</button></div>
   </section>
 
   <section class="card">
@@ -233,6 +251,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const name = (id) => state.players[id]?.name || 'Someone';
 const compById = (id) => state.competitions.find((c) => c.id === id);
 const bal = (pid, c = compById(state.nextComp)) => c?.table.find((r) => r.id === pid)?.tokens ?? 0;
+const REACTIONS = ['😱', '🍺', '🔥', '😂', '👏', '😤'];
 const KIND = { season: 'Season', tournament: 'Tournament', match: 'One-off match' };
 const day = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString([], { day: 'numeric', month: 'short' });
 function compLine(c) {
@@ -420,6 +439,29 @@ function render() {
       return `<li class="${m.closest.includes(id) ? 'holder' : ''}"><span>${esc(name(id))}${id === me ? ' (you)' : ''} · <b>${g.guess}</b></span><span class="meta">${off === 0 ? 'spot on' : `${Math.abs(off)} ${off > 0 ? 'over' : 'under'}`} · ${g.stake} tokens</span></li>`;
     }).join('');
     $('matchComp').textContent = `For ${compById(m.compId)?.name || 'the competition'}`;
+    const gd = m.golden;
+    $('goldenNote').classList.toggle('hidden', !gd);
+    if (gd) {
+      $('goldenNote').textContent = gd.secret
+        ? `★ Golden corner is hidden in corners 1 to 12 · worth ${gd.bonus}`
+        : `★ Golden corner was number ${gd.corner} · ${name(gd.holder)} takes ${gd.bonus} at full time`;
+    }
+    const meIn = me && state.players[me];
+    $('reactCard').classList.toggle('hidden', !meIn);
+    if (!$('reactBar').children.length) {
+      $('reactBar').innerHTML = REACTIONS.map((e) => `<button data-react="${e}" aria-label="React ${e}">${e}</button>`).join('');
+    }
+    const recent = (m.reactions || []).filter((r) => Date.now() - r.at < 120000).slice(-10).reverse();
+    $('reacts').innerHTML = recent.map((r) => `<span>${esc(name(r.id))} ${r.emoji}</span>`).join('');
+    const log = [...(m.log || [])].reverse();
+    $('matchLog').innerHTML = log.map((e) => {
+      const when = e.minute ? `${esc(e.minute)} · ` : '';
+      const gold = gd && !gd.secret && !e.back && e.n === gd.corner ? ' <span class="gold">★ golden</span>' : '';
+      const how = e.byHand && m.fixtureId !== 'manual' ? ' <span class="meta">(by hand)</span>' : '';
+      return e.back
+        ? `<li><span>${when}Corner taken back${how}</span><span class="meta">flag back to ${esc(name(e.holder))}</span></li>`
+        : `<li><span>${when}Corner ${e.n}${e.team ? ` · ${esc(e.team)}` : ''}${gold}${how}</span><span class="meta">flag to ${esc(name(e.holder))}</span></li>`;
+    }).join('') || '<li class="meta plain">No corners yet.</li>';
     $('order').innerHTML = m.order.map((id, i) =>
       `<li class="${id === m.holder ? 'holder' : ''}"><span>${i + 1} · ${esc(name(id))}</span><span class="meta">${m.stakes[id]}</span></li>`).join('');
   } else {
@@ -470,7 +512,8 @@ function render() {
   $('history').innerHTML = (v?.history || []).map((h) => h.abandoned
     ? `<li><span>${esc(h.label)}</span><span class="meta">abandoned, stakes refunded</span></li>`
     : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corners</span></span><span style="text-align:right">${esc(name(h.winner))} won <b>${h.pot}</b>${h.sidePot
-        ? `<br><span class="meta">Side pot ${h.sidePot}: ${h.guessWinners.map((id) => `${esc(name(id))} (${h.guesses[id].guess})`).join(', ')}</span>` : ''}</span></li>`).join('')
+        ? `<br><span class="meta">Side pot ${h.sidePot}: ${h.guessWinners.map((id) => `${esc(name(id))} (${h.guesses[id].guess})`).join(', ')}</span>` : ''}${h.golden?.winner
+        ? `<br><span class="meta">★ Golden corner ${h.golden.corner}: ${esc(name(h.golden.winner))} +${h.golden.bonus}</span>` : ''}</span></li>`).join('')
     || '<li class="meta plain">No matches yet.</li>';
 }
 
@@ -485,7 +528,9 @@ document.addEventListener('click', (e) => {
   }
   const b = e.target.closest('button');
   if (!b) return;
-  if (b.dataset.me) {
+  if (b.dataset.react) {
+    act('react', { id: me, emoji: b.dataset.react });
+  } else if (b.dataset.me) {
     setMe(b.dataset.me);
     render();
   } else if (b.dataset.remove) {
@@ -591,7 +636,7 @@ $('loadFixtures').onclick = async () => {
 
 $('start').onclick = () => {
   const opt = $('fixture').selectedOptions[0];
-  act('startMatch', { fixtureId: opt?.value, label: opt?.dataset.label, kickoff: opt?.dataset.kickoff });
+  act('startMatch', { fixtureId: opt?.value, label: opt?.dataset.label, kickoff: opt?.dataset.kickoff, golden: $('golden').checked });
 };
 
 // A join link (/?join=CODE) opens that group on this phone.

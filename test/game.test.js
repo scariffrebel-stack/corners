@@ -257,3 +257,63 @@ test('switching competition clears stakes put down for the old one', () => {
   assert.equal(s.nextComp, season);
   assert.equal(s.competitions[cup].status, 'open'); // still there to switch back to
 });
+
+test('the match log records each corner, whose it was and who got the flag', () => {
+  const { s, ids } = setup();
+  g.startMatch(s, { fixtureId: '1', stakes: { [ids[0]]: 1, [ids[1]]: 1, [ids[2]]: 1 } }, noShuffle);
+  g.applyFeed(s, { corners: 1, status: '1H', minute: "12'", teams: [{ name: 'Arsenal', corners: 1 }, { name: 'Chelsea', corners: 0 }] }, 1000);
+  g.applyFeed(s, { corners: 3, status: '1H', minute: "30'", teams: [{ name: 'Arsenal', corners: 2 }, { name: 'Chelsea', corners: 1 }] }, 2000);
+  g.applyFeed(s, { corners: 2, status: '2H', minute: "50'", teams: [{ name: 'Arsenal', corners: 1 }, { name: 'Chelsea', corners: 1 }] }, 3000);
+  g.manualCorner(s, 1, 4000);
+  assert.deepEqual(s.match.log, [
+    { n: 1, holder: ids[1], team: 'Arsenal', at: 1000, minute: "12'" },
+    { n: 2, holder: ids[2], at: 2000, minute: "30'" }, // two at once: can't tell whose
+    { n: 3, holder: ids[0], at: 2000, minute: "30'" },
+    { n: 2, holder: ids[2], back: 1, at: 3000, minute: "50'" },
+    { n: 3, holder: ids[0], at: 4000, byHand: true },
+  ]);
+  const r = g.settle(s);
+  assert.equal(r.log.length, 5);
+});
+
+test('reactions need a live match, a known player and one of the set emoji', () => {
+  const { s, ids } = setup(['Ann', 'Ben']);
+  assert.throws(() => g.react(s, ids[0], '🍺'), /No match/);
+  g.startMatch(s, { fixtureId: 'manual', stakes: { [ids[0]]: 1, [ids[1]]: 1 } });
+  g.react(s, ids[0], '🍺', 1000);
+  g.react(s, ids[0], '🔥', 1500); // too soon after the last one, dropped
+  g.react(s, ids[0], '🔥', 3000);
+  g.react(s, ids[1], '😱', 3000);
+  assert.deepEqual(s.match.reactions.map((r) => r.emoji), ['🍺', '🔥', '😱']);
+  assert.throws(() => g.react(s, ids[0], '💩'), /Unknown reaction/);
+  assert.throws(() => g.react(s, 'nobody', '🍺'), /Pick your name/);
+  for (let i = 0; i < 60; i++) g.react(s, ids[0], '👏', 10000 + i * 2000);
+  assert.equal(s.match.reactions.length, 40);
+});
+
+test('the golden corner pays a quarter of the pot to whoever got the flag on it', () => {
+  const { s, ids } = setup();
+  const rng = () => 0.25; // golden corner 1 + floor(0.25 * 12) = 4; the shuffle is fixed by the test below
+  g.startMatch(s, { fixtureId: 'manual', stakes: { [ids[0]]: 10, [ids[1]]: 10, [ids[2]]: 10 }, golden: true }, rng);
+  s.match.order = [...ids];
+  assert.equal(s.match.golden.corner, 4);
+  g.applyFeed(s, { corners: 3, status: '1H' });
+  assert.equal(g.goldenId(s.match), null);
+  g.applyFeed(s, { corners: 5, status: '2H' });
+  assert.equal(g.goldenId(s.match), ids[1]); // corner 4 gave the flag to the 4 % 3 = 1st
+  const r = g.settle(s); // holder at 5 corners is ids[2]
+  assert.deepEqual(r.golden, { corner: 4, winner: ids[1], bonus: 7 });
+  assert.equal(g.balance(s, ids[1]), 90 + 7);
+  assert.equal(g.balance(s, ids[2]), 90 + 23);
+});
+
+test('a golden corner that never comes leaves the whole pot to the holder', () => {
+  const { s, ids } = setup(['Ann', 'Ben']);
+  g.startMatch(s, { fixtureId: 'manual', stakes: { [ids[0]]: 10, [ids[1]]: 10 }, golden: true }, () => 0.999);
+  assert.equal(s.match.golden.corner, 12);
+  g.applyFeed(s, { corners: 13, status: '2H' });
+  g.applyFeed(s, { corners: 11, status: '2H' }); // the feed takes two back: no longer golden
+  const r = g.settle(s);
+  assert.deepEqual(r.golden, { corner: 12, winner: null, bonus: 0 });
+  assert.equal(g.balance(s, r.winner), 110);
+});
