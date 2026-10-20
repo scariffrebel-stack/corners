@@ -57,6 +57,7 @@
   .err:empty { display: none; }
   .warn { color: var(--accent); }
   .hidden { display: none !important; }
+  .coffee { display: block; text-align: center; color: var(--muted); font-size: 14px; padding: 12px; }
   details summary { cursor: pointer; color: var(--muted); min-height: 44px; display: flex; align-items: center; }
   input.guess { width: 96px; flex: none; text-align: center; }
   .ladder li .tok { font: 700 18px 'Barlow Condensed', sans-serif; }
@@ -313,6 +314,7 @@
   </div>
 
   <div class="err" id="err"></div>
+  <a class="coffee hidden" id="coffee" target="_blank" rel="noopener">Enjoying Corners? Buy me a coffee ☕</a>
 </main>
 <script>
 let state = null;
@@ -596,6 +598,8 @@ function renderComps() {
 function render() {
   if (!renderGroups()) return;
   const m = state.match;
+  $('coffee').classList.toggle('hidden', !state.tipUrl);
+  if (state.tipUrl) $('coffee').href = state.tipUrl;
   $('live').classList.toggle('hidden', !m);
 
   $('livePill').classList.toggle('hidden', !m || Date.now() < m.kickoff);

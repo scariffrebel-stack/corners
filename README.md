@@ -109,6 +109,7 @@ Optional, alongside the flag game, and open to players who sit the flag game out
    - `VAPID_SUBJECT` (optional): `mailto:` plus your email, so push services can contact you
    - `CRON_SECRET` (optional): any long random string. Vercel sends it with the morning reminder
      call so nobody else can trigger it
+   - `TIP_URL` (optional): an https link, such as your Buy Me a Coffee page, shown at the bottom of the app
 5. Redeploy, and share the link with your friends.
 
 ## Try it locally
