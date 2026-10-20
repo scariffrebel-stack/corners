@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as g from '../lib/game.js';
-import { alertAfter, quietHours, recipients } from '../lib/alerts.js';
+import { alertAfter, quietHours, recipients, snapshot, matchAlerts } from '../lib/alerts.js';
 
 const sub = (n) => ({ endpoint: `https://push.example/${n}`, keys: { p256dh: 'k', auth: 'a' } });
 
@@ -90,4 +90,40 @@ test('the morning reminder names your teams playing today, and tournament match 
   assert.equal(out.length, 3);
   assert.equal(out[2].alert.title, 'Derby weekend: match day');
   assert.equal(morningAlerts(s, [], '2026-10-26').length, 0);
+});
+
+const noShuffle = () => 0.999999;
+const to = (items) => items.map((i) => [i.sub.endpoint.slice(-1), i.alert.title]);
+
+test('the flag landing on you buzzes your phone only, and not when it comes back on an undo', () => {
+  const { s, ids } = group();
+  ids.forEach((id, i) => g.subscribe(s, id, sub(i + 1)));
+  g.startMatch(s, { fixtureId: '1', label: 'Arsenal v Spurs', stakes: { [ids[0]]: 5, [ids[1]]: 5 } }, noShuffle, 0);
+  assert.deepEqual(matchAlerts(s, null), []);
+  let was = snapshot(s);
+  g.applyFeed(s, { corners: 1, status: '1H' }, 1000);
+  const items = matchAlerts(s, was);
+  assert.deepEqual(to(items), [['2', "You've got the flag!"]]);
+  assert.equal(items[0].alert.body, 'Corner 1 in Arsenal v Spurs. Hold it to full time to win 10 tokens.');
+  was = snapshot(s);
+  g.callCorner(s, ids[0], 2000);
+  assert.deepEqual(matchAlerts(s, was, [ids[0]]), []); // Ann called it herself, so she knows
+  was = snapshot(s);
+  g.manualCorner(s, -1, 3000);
+  assert.deepEqual(matchAlerts(s, was), []); // an undo isn't news
+});
+
+test('full time tells everyone who won, in their own words; a called-off match says stakes are back', () => {
+  const { s, ids } = group();
+  ids.forEach((id, i) => g.subscribe(s, id, sub(i + 1)));
+  g.startMatch(s, { fixtureId: '1', label: 'Arsenal v Spurs', stakes: { [ids[0]]: 5, [ids[1]]: 5 } }, noShuffle, 0);
+  let was = snapshot(s);
+  g.applyFeed(s, { corners: 3, status: 'FT' }, 1000);
+  const items = matchAlerts(s, was, [ids[2]]);
+  assert.deepEqual(to(items), [['1', 'Full time: Ben wins 10 tokens'], ['2', 'Full time: you win 10 tokens!']]);
+  assert.equal(items[1].alert.body, 'Arsenal v Spurs, 3 corners. You held the flag at the whistle.');
+  g.startMatch(s, { fixtureId: '2', label: 'Leeds v Hull', stakes: { [ids[0]]: 1, [ids[1]]: 1 } }, noShuffle, 2000);
+  was = snapshot(s);
+  g.abandon(s, 3000);
+  assert.deepEqual(to(matchAlerts(s, was)), [['1', 'Leeds v Hull is off'], ['2', 'Leeds v Hull is off'], ['3', 'Leeds v Hull is off']]);
 });

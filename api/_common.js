@@ -3,7 +3,8 @@ import { GameError } from '../lib/game.js';
 import { applyFeed, holderId, pot, cornerCount, sidePot, closestIds, closeFinished, standings, goldenId, goldenShare } from '../lib/game.js';
 import { cornersFor } from '../lib/feed.js';
 import { playerStats } from '../lib/stats.js';
-import { pushKey } from '../lib/push.js';
+import { pushKey, sendMatchAlerts } from '../lib/push.js';
+import { snapshot } from '../lib/alerts.js';
 
 // 80s keeps one ~2 hour match under API-Football's free 100 requests a day.
 const POLL_MS = (Number(process.env.POLL_SECONDS) || 80) * 1000;
@@ -19,6 +20,7 @@ export async function loadAndPoll(groupId, now = Date.now()) {
   if (m && m.fixtureId !== 'manual' && now >= m.kickoff && now - m.lastPolled >= POLL_MS) {
     m.lastPolled = now;
     await save(state); // claim this poll so other viewers don't also call the feed
+    const was = snapshot(state);
     try {
       applyFeed(state, await cornersFor(m.fixtureId, m.startedAt), now);
       if (state.match) state.match.feedError = null;
@@ -27,6 +29,7 @@ export async function loadAndPoll(groupId, now = Date.now()) {
       if (state.match) state.match.feedError = feedError;
     }
     await save(state);
+    if (await sendMatchAlerts(state, was, [], now)) await save(state);
   }
   return state;
 }

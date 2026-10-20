@@ -46,6 +46,9 @@ Each phone can turn on alerts per group from the group menu. Nobody picks matche
 
 - **Game on:** when someone puts the first stake down for the next match, the rest of the group is
   told (at most once every 2 hours), and again when the match kicks off.
+- **During the match:** your phone buzzes when the flag lands on you ("You've got the flag!"), and
+  everyone hears the result at full time. The feed is checked while anyone in the group has the app
+  open, so these come as long as one of you is watching in the app.
 - **Teams you follow:** pick teams once. On days they play, you get one nudge at about 10am.
   A tournament's match days get the same morning nudge.
 - Nothing is sent between 11pm and 8am (UK time). On iPhone, alerts only work once Corners has been

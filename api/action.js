@@ -1,8 +1,8 @@
 import { save } from '../lib/store.js';
 import * as game from '../lib/game.js';
 import { loadAndPoll, view, send, sendError, readBody } from './_common.js';
-import { alertAfter } from '../lib/alerts.js';
-import { sendAlert } from '../lib/push.js';
+import { alertAfter, snapshot } from '../lib/alerts.js';
+import { sendAlert, sendMatchAlerts } from '../lib/push.js';
 
 const ACTIONS = {
   addPlayer: (s, b) => game.addPlayer(s, b.name),
@@ -37,10 +37,12 @@ export default async function handler(req, res) {
     if (!act) return send(res, 400, { error: 'Unknown action' });
     const state = await loadAndPoll(body.g);
     const before = Object.keys(state.pendingStakes || {}).length;
+    const was = snapshot(state);
     const result = act(state, body);
     const alert = alertAfter(state, body.type, { before, actor: body.me });
     await save(state);
-    if (await sendAlert(state, alert, [body.me])) await save(state);
+    const dropped = await sendAlert(state, alert, [body.me]);
+    if (await sendMatchAlerts(state, was, [body.me]) || dropped) await save(state);
     send(res, 200, { ...view(state, body.me), result: typeof result === 'string' ? result : undefined });
   } catch (e) {
     sendError(res, e);
