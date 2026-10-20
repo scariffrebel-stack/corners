@@ -7,7 +7,7 @@ test('a new group starts with its creator as the only player', () => {
   const { state, name, playerId } = g.newGroup(' Five-a-side ', 50, 'Ann');
   assert.equal(name, 'Five-a-side');
   assert.equal(state.startTokens, 50);
-  assert.deepEqual(state.players, { [playerId]: { name: 'Ann' } });
+  assert.deepEqual(state.players, { [playerId]: { name: 'Ann', phone: true } });
   assert.equal(g.balance(state, playerId), 50);
   assert.throws(() => g.newGroup('', 50, 'Ann'), g.GameError);
   assert.throws(() => g.newGroup('Pub', 0, 'Ann'), g.GameError);

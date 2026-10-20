@@ -371,3 +371,19 @@ test('undo takes back a called corner before a correction', () => {
   assert.equal(s.match.ahead, 0);
   assert.equal(s.match.manualAdjust, 0);
 });
+
+test('once a player picks their name on a phone, only they can change their stake', () => {
+  const { s, ids } = setup();
+  const [ann, ben] = ids;
+  g.setStake(s, ben, 5, ann); // Ben isn't on the app yet, so Ann types his in at the table
+  assert.equal(s.pendingStakes[ben], 5);
+  g.claim(s, ben);
+  assert.throws(() => g.setStake(s, ben, 50, ann), /Only Ben can change Ben's stake/);
+  assert.throws(() => g.setStake(s, ben, '', ann), /Only Ben/);
+  assert.throws(() => g.setGuess(s, ben, 9, 5, ann), /Only Ben/);
+  assert.throws(() => g.setStake(s, ben, 5, null), /Only Ben/); // a phone that hasn't picked a name
+  g.setStake(s, ben, 7, ben);
+  assert.equal(s.pendingStakes[ben], 7);
+  const fresh = g.newGroup('Pub', 100, 'Dee');
+  assert.equal(fresh.state.players[fresh.playerId].phone, true); // the creator is on their phone
+});
