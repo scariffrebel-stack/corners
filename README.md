@@ -40,6 +40,20 @@ In the group menu, a group can give its tokens a friendly label, such as "10 tok
 shows beside the pot and how far each player is up or down. It's only a label between friends:
 the app never sells tokens, takes money or pays anything out.
 
+## Alerts
+
+Each phone can turn on alerts per group from the group menu. Nobody picks matches one by one:
+
+- **Game on:** when someone puts the first stake down for the next match, the rest of the group is
+  told (at most once every 2 hours), and again when the match kicks off.
+- **Teams you follow:** pick teams once. On days they play, you get one nudge at about 10am.
+  A tournament's match days get the same morning nudge.
+- Nothing is sent between 11pm and 8am (UK time). On iPhone, alerts only work once Corners has been
+  added to the home screen and opened from there.
+
+Alerts need three settings in Vercel (see Set it up). Without them the app works as before, and the
+alerts section stays hidden.
+
 ## Rules
 
 1. Everyone starts the season with the same tokens (100 unless you pick another amount under New season). Most tokens at the end of the season wins.
@@ -90,6 +104,11 @@ Optional, alongside the flag game, and open to players who sit the flag game out
 4. In **Settings → Environment Variables**, add:
    - `API_FOOTBALL_KEY`: your key from step 1
    - `GAME_PIN` (optional): a PIN needed before anyone can start a group or change anything
+   - `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (optional, for alerts): make a pair with
+     `npx web-push generate-vapid-keys`
+   - `VAPID_SUBJECT` (optional): `mailto:` plus your email, so push services can contact you
+   - `CRON_SECRET` (optional): any long random string. Vercel sends it with the morning reminder
+     call so nobody else can trigger it
 5. Redeploy, and share the link with your friends.
 
 ## Try it locally

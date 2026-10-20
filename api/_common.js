@@ -3,6 +3,7 @@ import { GameError } from '../lib/game.js';
 import { applyFeed, holderId, pot, cornerCount, sidePot, closestIds, closeFinished, standings, goldenId, goldenShare } from '../lib/game.js';
 import { cornersFor } from '../lib/feed.js';
 import { playerStats } from '../lib/stats.js';
+import { pushKey } from '../lib/push.js';
 
 // 80s keeps one ~2 hour match under API-Football's free 100 requests a day.
 const POLL_MS = (Number(process.env.POLL_SECONDS) || 80) * 1000;
@@ -57,6 +58,7 @@ export function view(state, me) {
       .sort((a, b) => b.createdAt - a.createdAt)
       .map(({ balances, ...c }) => ({ ...c, table: standings(state, c.id) })),
     pinRequired: Boolean(process.env.GAME_PIN),
+    pushKey,
     pollSeconds: POLL_MS / 1000,
     match: m && {
       ...m,
