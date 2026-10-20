@@ -98,6 +98,16 @@
       <h2 id="settingsTitle">This group</h2>
       <p style="margin:0">Join code <span class="code" id="groupCode"></span></p>
       <p class="meta" style="margin:4px 0 10px">Friends can type this under Join a group, or use the Invite link.</p>
+      <div id="alertsBox" class="hidden" style="margin-bottom:14px">
+        <h2>Alerts on this phone</h2>
+        <p class="meta" style="margin-top:0" id="alertsNote">Get a buzz when someone puts a stake down or a match kicks off. Nothing is sent between 11pm and 8am.</p>
+        <button id="alertsBtn" class="ghost small">Turn on alerts</button>
+        <div id="teamsBox" class="hidden" style="margin-top:12px">
+          <h2>Teams you follow</h2>
+          <p class="meta" style="margin-top:0">Get one nudge in the morning on days they play, so you can set the match up.</p>
+          <div class="chips" id="teamList"></div>
+        </div>
+      </div>
       <h2>What tokens stand for</h2>
       <p class="meta" style="margin-top:0">Just a label between friends, like "10 tokens = 1 pint". The app never takes or pays out money.</p>
       <div class="row">
@@ -319,6 +329,54 @@ function upDown(tokens, start) {
   return `<span class="meta ${d > 0 ? 'up' : ''}">${d > 0 ? '+' : '−'}${Math.abs(d)}${w ? ` · ${w} ${d > 0 ? 'up' : 'down'}` : ''}</span>`;
 }
 
+// Alerts: one push subscription per phone, registered with each group that wants it.
+const canPush = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const alertsOn = () => !!stored('corners-alerts:' + groupId);
+function renderAlerts() {
+  $('alertsBox').classList.toggle('hidden', !state.pushKey);
+  const ok = canPush && me && state.players[me];
+  $('alertsBtn').classList.toggle('hidden', !ok);
+  $('alertsBtn').textContent = alertsOn() ? `Turn off alerts for ${state.group.name}` : `Turn on alerts for ${state.group.name}`;
+  if (!canPush) $('alertsNote').textContent = 'This browser can’t show alerts. On an iPhone, add Corners to your home screen and open it from there.';
+  else if (!ok) $('alertsNote').textContent = 'Pick your name in this group first, then you can turn alerts on.';
+  $('teamsBox').classList.toggle('hidden', !ok || !alertsOn() || !teams.length);
+  if (ok && alertsOn() && !teams.length && !teamsLoading) loadTeams();
+  const mine = new Set(state.players[me]?.teams || []);
+  $('teamList').innerHTML = teams.map((t) => `<button data-team="${esc(t)}" class="${mine.has(t) ? 'on' : ''}">${esc(t)}</button>`).join('');
+}
+let teams = [];
+let teamsLoading = false;
+async function loadTeams() {
+  teamsLoading = true;
+  try {
+    const body = await (await fetch('/api/teams')).json();
+    teams = body.teams || [];
+    render();
+  } catch {}
+}
+function keyBytes(b64) {
+  const s = atob((b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(s, (c) => c.charCodeAt(0));
+}
+async function toggleAlerts() {
+  if (alertsOn()) {
+    await act('unsubscribe', { endpoint: stored('corners-alerts:' + groupId) });
+    store('corners-alerts:' + groupId, null);
+    return render();
+  }
+  if ((await Notification.requestPermission()) !== 'granted') {
+    $('err').textContent = 'Alerts are blocked for Corners. Allow notifications in your phone’s settings, then try again.';
+    return;
+  }
+  const reg = await navigator.serviceWorker.register('/sw.js');
+  await navigator.serviceWorker.ready;
+  const sub = (await reg.pushManager.getSubscription())
+    || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(state.pushKey) }));
+  const body = await act('subscribe', { id: me, sub: sub.toJSON() });
+  if (body) store('corners-alerts:' + groupId, sub.endpoint);
+  render();
+}
+
 let boardSort = 'net';
 let boardScope = 'comp';
 const BOARDS = {
@@ -478,6 +536,7 @@ function renderGroups() {
   $('groupList').innerHTML = groups.map((g) =>
     `<li class="group${g.id === groupId ? ' current' : ''}" data-group="${esc(g.id)}"><span>${esc(g.name)}</span><span class="meta">${g.id === groupId ? 'open' : 'switch'}</span></li>`).join('');
   $('groupSettings').classList.toggle('hidden', !state);
+  if (state) renderAlerts();
   if (state) {
     $('settingsTitle').textContent = state.group.name;
     $('groupCode').textContent = state.group.code;
@@ -675,6 +734,14 @@ $('labelSave').onclick = () => {
   if (!$('labelUnit').value.trim()) { $('err').textContent = 'Say what the tokens stand for, like pint'; return; }
   act('setLabel', { per: Number($('labelPer').value || 10), unit: $('labelUnit').value });
 };
+$('teamList').onclick = (e) => {
+  const b = e.target.closest('button[data-team]');
+  if (!b) return;
+  const mine = new Set(state.players[me]?.teams || []);
+  if (mine.has(b.dataset.team)) mine.delete(b.dataset.team); else mine.add(b.dataset.team);
+  act('followTeams', { id: me, teams: [...mine] });
+};
+$('alertsBtn').onclick = () => toggleAlerts().catch((e) => { $('err').textContent = 'Couldn’t set up alerts: ' + e.message; });
 $('labelClear').onclick = () => act('setLabel', { unit: '' });
 
 $('groupBtn').onclick = () => { showGroups = !showGroups; render(); };
@@ -766,8 +833,14 @@ $('start').onclick = () => {
 };
 
 // A join link (/?join=CODE) opens that group on this phone.
-const joinParam = new URLSearchParams(location.search).get('join');
-if (joinParam) {
+const params = new URLSearchParams(location.search);
+const joinParam = params.get('join');
+if (params.get('g') && /^[a-z0-9]{1,20}$/.test(params.get('g'))) {
+  // Tapped an alert: open the group it came from.
+  history.replaceState(null, '', location.pathname);
+  openGroup(params.get('g'));
+  refresh();
+} else if (joinParam) {
   history.replaceState(null, '', location.pathname);
   groupCall('join', { code: joinParam });
 } else {
