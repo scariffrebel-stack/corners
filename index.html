@@ -61,7 +61,8 @@
   details summary { cursor: pointer; color: var(--muted); min-height: 44px; display: flex; align-items: center; }
   input.guess { width: 96px; flex: none; text-align: center; }
   .ladder li .tok { font: 700 18px 'Barlow Condensed', sans-serif; }
-  .groupname { display: block; max-width: 100%; margin: 12px 20px 0; min-height: 36px; padding: 4px 12px; font-size: 14px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .groupbar { margin: 12px 20px 0; }
+  .groupbar button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   li.group { cursor: pointer; }
   li.group.current { outline: 2px solid var(--accent); }
   label.check { display: flex; gap: 10px; align-items: center; min-height: 44px; color: var(--soft); font-size: 15px; }
@@ -102,7 +103,12 @@
       <button class="ghost small" id="invite">Invite</button>
     </div>
   </header>
-  <button class="ghost groupname hidden" id="groupBtn"></button>
+  <nav class="chips groupbar hidden" id="groupBar" aria-label="Your groups">
+    <span id="groupChips" style="display:contents"></span>
+    <button id="groupBtn" aria-label="Group settings">Groups ▾</button>
+  </nav>
+
+  <p class="meta hidden" id="joiningNote" style="margin:20px">Opening your invite…</p>
 
   <section id="howto" class="card hidden">
     <h2>How to play</h2>
@@ -123,7 +129,10 @@
         <h2 style="margin:0">Your group</h2>
         <button class="ghost small" id="groupsClose">Done</button>
       </div>
-      <p class="group-name" id="settingsTitle">This group</p>
+      <div class="row" style="align-items:center;margin-bottom:6px">
+        <p class="group-name" id="settingsTitle" style="flex:1;margin:0">This group</p>
+        <button class="ghost small" id="renameBtn">Rename</button>
+      </div>
       <div class="row" style="align-items:center;margin-bottom:4px">
         <p style="margin:0;flex:1">Join code <span class="code" id="groupCode"></span></p>
         <button class="small" id="groupInvite">Send invite</button>
@@ -161,7 +170,7 @@
         <summary>Start a new group</summary>
         <p class="meta" style="margin-top:0">For your mates, your family or the regulars at the pub. You get a link to send them.</p>
         <div class="row">
-          <input id="newGroupName" placeholder="Group name" maxlength="40">
+          <input id="newGroupName" placeholder="Group name (needed)" maxlength="40" required oninvalid="this.setCustomValidity('Give the group a name')" oninput="this.setCustomValidity('')">
         </div>
         <div class="row" style="margin-top:8px">
           <input id="newGroupMe" placeholder="Your name" maxlength="30" autocomplete="given-name">
@@ -189,6 +198,7 @@
       <input id="joinName" placeholder="New player? Your name" maxlength="30" autocomplete="given-name">
       <button id="joinBtn">Join</button>
     </div>
+    <button class="ghost small" id="joinHowto" style="margin-top:10px">New to Corners? How to play</button>
     <p class="tip">Opened this inside WhatsApp? Open it in Safari or Chrome and add it to your home screen, so it remembers you next time.</p>
   </section>
 
@@ -508,6 +518,7 @@ async function act(type, extra = {}) {
     return;
   }
   state = body;
+  rememberGroup(body.group); // keeps a rename in this phone's list of groups
   render();
   return body;
 }
@@ -554,6 +565,7 @@ async function refresh() {
 
 // How to play shows by itself the first time a phone opens Corners, and from the ? button after.
 let showHowto = !stored('corners-howto-seen');
+let joining = false; // opened from an invite link and still fetching that group
 let lastHolder = null;
 let showGroups = false;
 let me = groupId ? stored('corners-me:' + groupId) : null;
@@ -571,7 +583,8 @@ function shortLabel(label) {
 
 function renderGroups() {
   $('howto').classList.toggle('hidden', !showHowto);
-  const open = showGroups || !groupId;
+  const open = (showGroups || !groupId) && !joining;
+  $('joiningNote').classList.toggle('hidden', !joining);
   $('groups').classList.toggle('hidden', !open);
   // Only the other groups are listed: the open one is the "Your group" block above.
   const others = groups.filter((g) => g.id !== groupId);
@@ -595,8 +608,11 @@ function renderGroups() {
     }
   }
   if (!$('newGroupMe').value && document.activeElement !== $('newGroupMe')) $('newGroupMe').value = stored('corners-name') || '';
-  $('groupBtn').classList.toggle('hidden', !state);
-  if (state) $('groupBtn').textContent = `${state.group.name} ▾`;
+  // The home screen shows every group this phone is in, so switching is one tap.
+  $('groupBar').classList.toggle('hidden', !state);
+  $('groupChips').innerHTML = groups.map((g) =>
+    `<button class="${g.id === groupId ? 'on' : ''}" data-switch="${esc(g.id)}">${esc(g.name)}</button>`).join('');
+  $('groupBtn').textContent = showGroups ? 'Close ▴' : (groups.length > 1 ? 'Groups ▾' : 'Group ▾');
   $('game').classList.toggle('hidden', open || !state);
   $('invite').classList.toggle('hidden', !state);
   return !open && state;
@@ -742,9 +758,10 @@ function render() {
 }
 
 document.addEventListener('click', (e) => {
-  const g = e.target.closest('li[data-group]');
+  const g = e.target.closest('li[data-group], button[data-switch]');
   if (g) {
-    if (g.dataset.group !== groupId) openGroup(g.dataset.group);
+    const id = g.dataset.group || g.dataset.switch;
+    if (id !== groupId) openGroup(id);
     showGroups = false;
     render();
     refresh();
@@ -799,9 +816,21 @@ $('howtoClose').onclick = () => { showHowto = false; store('corners-howto-seen',
 
 $('groupBtn').onclick = () => { showGroups = !showGroups; render(); };
 $('groupsClose').onclick = () => { showGroups = false; render(); };
-$('createGroup').onclick = () => groupCall('create', {
-  name: $('newGroupName').value, player: $('newGroupMe').value, startTokens: $('newGroupTokens').value,
-}).then((ok) => { if (ok) ['newGroupName', 'newGroupMe', 'newGroupTokens'].forEach((id) => { $(id).value = ''; }); });
+$('createGroup').onclick = () => {
+  if (!$('newGroupName').value.trim()) {
+    $('newGroupName').value = '';
+    $('newGroupName').reportValidity(); // "Give the group a name" bubble, right on the box
+    return;
+  }
+  groupCall('create', {
+    name: $('newGroupName').value, player: $('newGroupMe').value, startTokens: $('newGroupTokens').value,
+  }).then((ok) => { if (ok) ['newGroupName', 'newGroupMe', 'newGroupTokens'].forEach((id) => { $(id).value = ''; }); });
+};
+$('renameBtn').onclick = () => {
+  const name = prompt('What should this group be called?', state.group.name);
+  if (name != null && name.trim() && name.trim() !== state.group.name) act('renameGroup', { name });
+};
+$('joinHowto').onclick = () => { showHowto = true; render(); scrollTo({ top: 0, behavior: 'smooth' }); };
 $('joinCodeBtn').onclick = () => {
   if ($('joinCode').value.trim()) groupCall('join', { code: $('joinCode').value }).then((ok) => { if (ok) $('joinCode').value = ''; });
 };
@@ -895,8 +924,12 @@ if (params.get('g') && /^[a-z0-9]{1,20}$/.test(params.get('g'))) {
   openGroup(params.get('g'));
   refresh();
 } else if (joinParam) {
+  // Straight to that group's welcome: the how-to is a tap away on it, rather than in the way.
   history.replaceState(null, '', location.pathname);
-  groupCall('join', { code: joinParam });
+  joining = true;
+  showHowto = false;
+  render();
+  groupCall('join', { code: joinParam }).finally(() => { joining = false; render(); });
 } else {
   refresh();
 }

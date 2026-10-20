@@ -327,3 +327,12 @@ test('a group can say what its tokens stand for, or clear it', () => {
   g.setLabel(s, '', '');
   assert.equal(s.label, undefined);
 });
+
+test('a group can be renamed but never left without a name', () => {
+  const s = g.emptyState();
+  s.group = { id: 'abc', name: 'Corners', code: 'ABCDEF' };
+  g.renameGroup(s, '  Sunday League ');
+  assert.equal(s.group.name, 'Sunday League');
+  assert.throws(() => g.renameGroup(s, '   '), /name/);
+  assert.equal(s.group.name, 'Sunday League');
+});

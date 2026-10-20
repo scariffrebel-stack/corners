@@ -19,6 +19,7 @@ const ACTIONS = {
   setGuess: (s, b) => game.setGuess(s, b.id, b.guess, b.stake),
   react: (s, b) => game.react(s, b.id, b.emoji),
   setLabel: (s, b) => game.setLabel(s, b.unit, b.per),
+  renameGroup: (s, b) => game.renameGroup(s, b.name),
   subscribe: (s, b) => game.subscribe(s, b.id, b.sub),
   unsubscribe: (s, b) => game.unsubscribe(s, b.endpoint),
   followTeams: (s, b) => game.followTeams(s, b.id, b.teams),
