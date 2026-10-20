@@ -78,6 +78,10 @@
   .form i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); display: inline-block; }
   .form i.w { background: var(--accent); }
   .up { color: var(--accent); }
+  ol.steps { counter-reset: step; gap: 8px; }
+  ol.steps li { display: block; min-height: 0; padding: 10px 12px 10px 44px; position: relative; font-size: 15px; color: var(--soft); }
+  ol.steps li b { color: var(--text); }
+  ol.steps li::before { counter-increment: step; content: counter(step); position: absolute; left: 12px; top: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--bg); font: 700 14px/22px 'Barlow Condensed', sans-serif; text-align: center; }
   .tip { font-size: 13px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; margin: 10px 0 0; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
@@ -88,10 +92,24 @@
     <h1><svg class="logo" width="34" height="34" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><rect width="160" height="160" rx="34" fill="#0b1f14"/><path d="M115.2 50.4A46 46 0 0 0 97.1 37.3M92.6 35.8A46 46 0 0 0 72.6 34.6M67.9 35.6A46 46 0 0 0 50.2 44.9M46.7 48.2A46 46 0 0 0 36.4 65.4M35.1 70A46 46 0 0 0 35.1 90M36.4 94.6A46 46 0 0 0 46.7 111.8M50.2 115.1A46 46 0 0 0 67.9 124.4M72.6 125.4A46 46 0 0 0 92.6 124.2" stroke="#ffd23f" stroke-width="16" fill="none"/><path d="M91.9 109.7L120 104.5 102.4 135.7Z" fill="#ffd23f" stroke="#ffd23f" stroke-width="3" stroke-linejoin="round"/><path d="M80 104V52" stroke="#eaf3ec" stroke-width="4" stroke-linecap="round"/><path d="M80 54L108 62 80 72Z" fill="#eaf3ec"/></svg>CORNERS</h1>
     <div class="row" style="align-items:center">
       <span class="pill hidden" id="livePill">LIVE</span>
+      <button class="ghost small" id="howtoBtn" aria-label="How to play">?</button>
       <button class="ghost small" id="invite">Invite</button>
     </div>
   </header>
   <button class="ghost groupname hidden" id="groupBtn"></button>
+
+  <section id="howto" class="card hidden">
+    <h2>How to play</h2>
+    <ol class="steps">
+      <li><b>Put in some tokens.</b> Everyone sets their own stake for the match on their phone. Leave it blank to sit one out.</li>
+      <li><b>Someone gets the flag.</b> At kick-off the order is shuffled and the first player holds the Corner flag.</li>
+      <li><b>Every corner passes it on.</b> Each corner to either team moves the flag one place along. The app follows the live match for you.</li>
+      <li><b>Hold it at full time, win the pot.</b> Whoever has the flag when the ref blows takes every token staked.</li>
+    </ol>
+    <p class="meta" style="margin:10px 0 4px"><b>Extras:</b> guess the total corners for a side pot, or tick golden corner, where a secret corner wins a quarter of the pot.</p>
+    <p class="meta" style="margin:0 0 12px">Play a single match, a tournament or a whole season. Each keeps its own tokens and its own table. Tokens are just for fun between friends, and the app never takes or pays out money.</p>
+    <button id="howtoClose" style="width:100%">Got it</button>
+  </section>
 
   <section id="groups" class="card hidden">
     <div id="groupSettings" class="hidden" style="margin-bottom:18px">
@@ -513,6 +531,8 @@ async function refresh() {
   }
 }
 
+// How to play shows by itself the first time a phone opens Corners, and from the ? button after.
+let showHowto = !stored('corners-howto-seen');
 let lastHolder = null;
 let showGroups = false;
 let me = groupId ? stored('corners-me:' + groupId) : null;
@@ -529,6 +549,7 @@ function shortLabel(label) {
 }
 
 function renderGroups() {
+  $('howto').classList.toggle('hidden', !showHowto);
   const open = showGroups || !groupId;
   $('groups').classList.toggle('hidden', !open);
   $('groupsMine').classList.toggle('hidden', !groups.length);
@@ -743,6 +764,9 @@ $('teamList').onclick = (e) => {
 };
 $('alertsBtn').onclick = () => toggleAlerts().catch((e) => { $('err').textContent = 'Couldn’t set up alerts: ' + e.message; });
 $('labelClear').onclick = () => act('setLabel', { unit: '' });
+
+$('howtoBtn').onclick = () => { showHowto = !showHowto; render(); if (showHowto) scrollTo({ top: 0, behavior: 'smooth' }); };
+$('howtoClose').onclick = () => { showHowto = false; store('corners-howto-seen', '1'); render(); };
 
 $('groupBtn').onclick = () => { showGroups = !showGroups; render(); };
 $('groupsClose').onclick = () => { showGroups = false; render(); };
