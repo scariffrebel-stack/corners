@@ -111,9 +111,10 @@
   /* Someone new sees only the welcome until they pick their name, then the game opens up. */
   #game.newcomer > :not(#join) { display: none !important; }
   .group-block { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
-  #groups details summary, #otherDay summary { color: var(--soft); justify-content: space-between; }
-  #groups details summary::after, #otherDay summary::after { content: '+'; font-size: 22px; color: var(--muted); }
-  #groups details[open] summary::after, #otherDay[open] summary::after { content: '−'; }
+  button.link { background: none; border: 0; padding: 0; min-height: 0; color: var(--accent); font: inherit; text-decoration: underline; }
+  #groups details summary, #otherDay summary, #extras summary { color: var(--soft); justify-content: space-between; }
+  #groups details summary::after, #otherDay summary::after, #extras summary::after { content: '+'; font-size: 22px; color: var(--muted); }
+  #groups details[open] summary::after, #otherDay[open] summary::after, #extras[open] summary::after { content: '−'; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
@@ -182,6 +183,34 @@
       <div class="row" style="margin-top:8px">
         <button id="labelSave" class="ghost small">Save</button>
         <button id="labelClear" class="ghost small hidden">Clear</button>
+      </div>
+      <div id="compCard" class="group-block">
+        <h2>Playing for</h2>
+        <div class="row">
+          <select id="compPick" aria-label="Competition for the next match"></select>
+          <button class="ghost small" id="compEnd">End it</button>
+        </div>
+        <p class="meta" id="compNote" style="margin-bottom:0"></p>
+        <details id="compNew" style="margin-top:8px">
+          <summary>Start a new competition</summary>
+          <div class="row">
+            <select id="compKind" aria-label="Kind of competition">
+              <option value="tournament">Tournament: a set of days, e.g. one weekend</option>
+              <option value="match">One-off match</option>
+              <option value="season">Season: runs until you end it</option>
+            </select>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <input id="compName" placeholder="Name, e.g. Derby weekend" maxlength="40">
+            <input id="compTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens each" aria-label="Starting tokens each" style="flex:none;width:120px">
+          </div>
+          <div class="row" id="compDates" style="margin-top:8px">
+            <input type="date" id="compFrom" aria-label="First day">
+            <input type="date" id="compTo" aria-label="Last day">
+          </div>
+          <p class="meta" style="margin:8px 0">Every competition has its own tokens, so it never touches the others.</p>
+          <button id="compCreate" style="width:100%">Start it</button>
+        </details>
       </div>
     </div>
     <div id="groupsMine" class="group-block">
@@ -279,38 +308,28 @@
     </section>
   </div>
 
-  <section id="compCard" class="card hidden" data-tab="play">
-    <h2>Playing for</h2>
+
+  <section id="inviteCard" class="card hidden" data-tab="play">
+    <h2>Invite your friends</h2>
+    <p class="meta" style="margin-top:0">You need at least two players. Send the link to the group chat, or read out the code <span class="code" id="inviteCode"></span>.</p>
+    <button class="big" id="inviteBig" style="width:100%">Send invite</button>
+    <p class="meta" style="margin:14px 0 6px">Friend with you who hasn't got a phone handy? Add them here.</p>
     <div class="row">
-      <select id="compPick" aria-label="Competition for the next match"></select>
-      <button class="ghost small" id="compEnd">End it</button>
+      <input id="quickName" placeholder="Their name" maxlength="30">
+      <button id="quickAdd">Add</button>
     </div>
-    <p class="meta" id="compNote" style="margin-bottom:0"></p>
-    <details id="compNew" style="margin-top:8px">
-      <summary>Start a new competition</summary>
-      <div class="row">
-        <select id="compKind" aria-label="Kind of competition">
-          <option value="tournament">Tournament: a set of days, e.g. one weekend</option>
-          <option value="match">One-off match</option>
-          <option value="season">Season: runs until you end it</option>
-        </select>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <input id="compName" placeholder="Name, e.g. Derby weekend" maxlength="40">
-        <input id="compTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens each" aria-label="Starting tokens each" style="flex:none;width:120px">
-      </div>
-      <div class="row" id="compDates" style="margin-top:8px">
-        <input type="date" id="compFrom" aria-label="First day">
-        <input type="date" id="compTo" aria-label="Last day">
-      </div>
-      <p class="meta" style="margin:8px 0">Every competition has its own tokens, so it never touches the others.</p>
-      <button id="compCreate" style="width:100%">Start it</button>
-    </details>
+  </section>
+
+  <section id="noComp" class="card hidden" data-tab="play">
+    <h2>Nothing running</h2>
+    <p class="meta" style="margin-top:0">Start a season, a tournament or a one-off match from the group menu.</p>
+    <button id="noCompBtn" style="width:100%">Open the group menu</button>
   </section>
 
   <section id="setup" class="card hidden" data-tab="play">
     <h2>New match</h2>
-    <p class="meta" style="margin-top:0" id="fixturesDay">Today's matches</p>
+    <p class="meta" style="margin-top:0"><span id="setupFor"></span> · <button class="link" id="setupForBtn">change</button></p>
+    <p class="meta" style="margin:0 0 6px" id="fixturesDay">Today's matches</p>
     <ul id="fixtureList" class="fixtures"></ul>
     <select id="fixture" class="hidden" aria-hidden="true"></select>
     <details id="otherDay">
@@ -320,19 +339,24 @@
         <button class="ghost small" id="testMatch">Test match</button>
       </div>
     </details>
-    <p class="meta">Everyone sets their own stake on their phone. Leave it blank to sit this one out.</p>
+    <h2 style="margin-top:14px">Stakes</h2>
+    <div class="chips hidden" id="myStake"></div>
+    <p class="meta" style="margin-top:0" id="stakeNote">Tap your stake. Anyone can type a stake for a friend at the table. Blank sits it out.</p>
     <ul id="stakes"></ul>
-    <h2 style="margin-top:18px">Side pot · guess the corners</h2>
-    <p class="meta" style="margin-top:0">Optional. Guess the total corners and stake some tokens on it. Closest guess takes the side pot, ties split it. Guesses stay hidden until the match starts.</p>
-    <div class="row" id="myGuess">
-      <input class="guess" id="guessNum" type="number" min="0" max="99" inputmode="numeric" placeholder="Corners" aria-label="Your corners guess">
-      <input class="guess" id="guessStake" type="number" min="1" inputmode="numeric" placeholder="Tokens" aria-label="Tokens on your guess">
-      <button id="guessSave" style="flex:1">Lock in guess</button>
-    </div>
-    <p class="meta hidden" id="guessNeedMe" style="margin:0">Pick your name above to make a guess.</p>
-    <ul id="guessList" style="margin-top:8px"></ul>
-    <label class="check" style="margin-top:12px"><input type="checkbox" id="golden"> Golden corner: a secret corner from 1 to 12. Whoever gets the flag on it takes a quarter of the pot.</label>
-    <div class="row" style="margin-top:8px"><button class="big" id="start">Shuffle and start</button></div>
+    <div class="row" style="margin-top:12px"><button class="big" id="start">Shuffle and start</button></div>
+    <details id="extras" style="margin-top:8px">
+      <summary>Extras: side pot and golden corner</summary>
+      <h2>Side pot · guess the corners</h2>
+      <p class="meta" style="margin-top:0">Optional. Guess the total corners and stake some tokens on it. Closest guess takes the side pot, ties split it. Guesses stay hidden until the match starts.</p>
+      <div class="row" id="myGuess">
+        <input class="guess" id="guessNum" type="number" min="0" max="99" inputmode="numeric" placeholder="Corners" aria-label="Your corners guess">
+        <input class="guess" id="guessStake" type="number" min="1" inputmode="numeric" placeholder="Tokens" aria-label="Tokens on your guess">
+        <button id="guessSave" style="flex:1">Lock in guess</button>
+      </div>
+      <p class="meta hidden" id="guessNeedMe" style="margin:0">Pick your name above to make a guess.</p>
+      <ul id="guessList" style="margin-top:8px"></ul>
+      <label class="check" style="margin-top:12px"><input type="checkbox" id="golden"> Golden corner: a secret corner from 1 to 12. Whoever gets the flag on it takes a quarter of the pot.</label>
+    </details>
   </section>
 
   <section class="card" data-tab="table">
@@ -669,8 +693,14 @@ function renderComps() {
   const live = !!state.match;
   const open = state.competitions.filter((c) => c.status === 'open');
   const next = compById(state.nextComp);
+  const few = Object.keys(state.players).length < 2;
   $('compCard').classList.toggle('hidden', live);
-  $('setup').classList.toggle('hidden', live || !next);
+  // Play shows one next step: invite people, start a competition, or set up the match.
+  $('inviteCard').classList.toggle('hidden', live || !few);
+  $('inviteCode').textContent = state.group.code;
+  $('noComp').classList.toggle('hidden', live || few || !!next);
+  $('setup').classList.toggle('hidden', live || few || !next);
+  if (next) $('setupFor').textContent = `For ${next.name}`;
   if (!live && next && fixturesFor == null) loadFixtures();
   if (document.activeElement !== $('compPick')) {
     $('compPick').innerHTML = open.map((c) =>
@@ -682,6 +712,21 @@ function renderComps() {
   $('compNote').textContent = next ? compLine(next) : 'Nothing is running. Start a season, a tournament or a one-off match.';
   if (!next) $('compNew').open = true;
   $('compDates').classList.toggle('hidden', $('compKind').value !== 'tournament');
+}
+
+// One-tap stakes for this phone's player: a few round numbers, last match's stake, or sitting out.
+function renderMyStake(meKnown) {
+  $('myStake').classList.toggle('hidden', !meKnown);
+  if (!meKnown) return;
+  const have = bal(me);
+  const now = state.pendingStakes[me];
+  const last = compById(state.nextComp)?.history.find((h) => h.stakes?.[me])?.stakes[me];
+  const amounts = [5, 10, 20].filter((n) => n <= have);
+  const chips = amounts.map((n) => ({ n, text: String(n) }));
+  if (last && !amounts.includes(last) && last <= have) chips.push({ n: last, text: `${last} like last time` });
+  $('myStake').innerHTML = '<span class="meta" style="align-self:center">You:</span>'
+    + chips.map(({ n, text }) => `<button data-stake="${n}" class="${now === n ? 'on' : ''}">${text}</button>`).join('')
+    + `<button data-stake="" class="${now ? '' : 'on'}">Sit out</button>`;
 }
 
 // The flag changing hands: a full-screen flash everyone in the room can see, louder when it lands on you.
@@ -801,10 +846,9 @@ function render() {
       $('stakes').innerHTML = Object.entries(state.players).map(([id, p]) =>
         `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${bal(id)} tokens</span></span><input class="stake" type="number" min="0" max="${bal(id)}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${state.pendingStakes[id] ?? ''}" placeholder="—"></li>`).join('')
         || '<li class="meta plain">Add players below first.</li>';
-      // The add-player box lives on the Table tab, so point there while the game is short of players.
-      if (Object.keys(state.players).length < 2) $('stakes').innerHTML += '<li class="meta plain">You need at least two players. Send the invite, or add them on the Table tab.</li>';
     }
     const meKnown = me && state.players[me];
+    renderMyStake(meKnown);
     const mine = meKnown && state.pendingGuesses[me];
     $('myGuess').classList.toggle('hidden', !meKnown);
     $('guessNeedMe').classList.toggle('hidden', !!meKnown);
@@ -937,17 +981,20 @@ $('joinCodeBtn').onclick = () => {
 };
 $('joinCode').onkeydown = (e) => { if (e.key === 'Enter') $('joinCodeBtn').click(); };
 
-$('groupInvite').onclick = () => $('invite').click();
-$('invite').onclick = async () => {
+$('groupInvite').onclick = (e) => sendInvite(e.currentTarget);
+$('invite').onclick = (e) => sendInvite(e.currentTarget);
+// Shares the join link, or copies it where sharing isn't available; the tapped button says so.
+async function sendInvite(btn) {
   const url = `${location.origin}/?join=${state.group.code}`;
   const text = `Join ${state.group.name} on Corners: whoever holds the flag at full time wins the pot. Code ${state.group.code}.`;
   try {
     if (navigator.share) return await navigator.share({ title: 'Corners', text, url });
   } catch (e) { if (e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(url); $('invite').textContent = `Link copied · ${state.group.code}`; }
+  const was = btn.textContent;
+  try { await navigator.clipboard.writeText(url); btn.textContent = `Link copied · ${state.group.code}`; }
   catch { prompt(`Copy this link and send it to your friends, or give them the code ${state.group.code}`, url); }
-  setTimeout(() => { $('invite').textContent = 'Invite'; }, 2500);
-};
+  setTimeout(() => { btn.textContent = was; }, 2500);
+}
 
 $('stakes').addEventListener('change', (e) => {
   const el = e.target.closest('input.stake');
@@ -1046,6 +1093,19 @@ $('date').onchange = loadFixtures;
 $('testMatch').onclick = () => { picked = TEST_MATCH; $('otherDay').open = false; renderFixtures(); };
 
 $('callCorner').onclick = () => act('callCorner');
+$('myStake').onclick = (e) => {
+  const b = e.target.closest('button[data-stake]');
+  if (b) act('setStake', { id: me, stake: b.dataset.stake === '' ? '' : Number(b.dataset.stake) });
+};
+const openMenu = () => { showGroups = true; render(); scrollTo({ top: 0, behavior: 'smooth' }); };
+$('setupForBtn').onclick = openMenu;
+$('noCompBtn').onclick = openMenu;
+$('inviteBig').onclick = (e) => sendInvite(e.currentTarget);
+$('quickAdd').onclick = () => {
+  const n = $('quickName').value.trim();
+  if (n) act('addPlayer', { name: n }).then((ok) => { if (ok) $('quickName').value = ''; });
+};
+$('quickName').onkeydown = (e) => { if (e.key === 'Enter') $('quickAdd').click(); };
 $('winnerClose').onclick = () => { $('winner').classList.add('hidden'); showTab('play'); scrollTo({ top: 0 }); };
 
 $('start').onclick = () => {
