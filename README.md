@@ -4,6 +4,56 @@ A game for friends watching the Premier League. Each player stakes their own tok
 random player starts with the Corner flag, and the flag passes along the order every
 time either team gets a corner. Whoever holds it at full time takes the whole pot.
 
+## Groups
+
+Anyone can start their own group from the home screen: give it a name, your name, and how many
+tokens everyone starts with. Each group has its own players, tokens, matches and results.
+Tap **Invite** to send a join link, or read out the 6-letter code shown with it. The same phone
+can be in several groups, and the group name under the logo switches between them.
+
+The game that was running before groups existed carries on as the group called "Corners", with
+its players and tokens kept. Phones that had already picked a name open straight into it.
+
+## Competitions
+
+Every match is played for a competition, and each competition has its own tokens:
+
+- **Season:** runs until you end it, or until you tap **New season**. Most tokens at the end wins.
+- **Tournament:** a run of days, such as one weekend or a cup run. Only matches on those days count,
+  and it ends by itself after the last day.
+- **One-off match:** a single game with its own tokens, over at full time.
+
+A tournament or one-off match never touches the season's tokens. Pick what the next match is for under
+**Playing for**, and look back at any competition's final table from the table card. A group from
+before competitions carries on as its first season, with every balance and result kept.
+
+## Leaderboards and running totals
+
+The leaderboard ranks players for the competition you're looking at, or for all time across every
+competition in the group: tokens won, win rate, flags won, best corner guesser and streaks, with
+each player's last five results. Late steals (the flag reaching the winner in the 90th minute or
+later) and golden corners are counted too. Everything is worked out from the saved results.
+
+## What tokens stand for
+
+In the group menu, a group can give its tokens a friendly label, such as "10 tokens = 1 pint". It
+shows beside the pot and how far each player is up or down. It's only a label between friends:
+the app never sells tokens, takes money or pays anything out.
+
+## Alerts
+
+Each phone can turn on alerts per group from the group menu. Nobody picks matches one by one:
+
+- **Game on:** when someone puts the first stake down for the next match, the rest of the group is
+  told (at most once every 2 hours), and again when the match kicks off.
+- **Teams you follow:** pick teams once. On days they play, you get one nudge at about 10am.
+  A tournament's match days get the same morning nudge.
+- Nothing is sent between 11pm and 8am (UK time). On iPhone, alerts only work once Corners has been
+  added to the home screen and opened from there.
+
+Alerts need three settings in Vercel (see Set it up). Without them the app works as before, and the
+alerts section stays hidden.
+
 ## Rules
 
 1. Everyone starts the season with the same tokens (100 unless you pick another amount under New season). Most tokens at the end of the season wins.
@@ -13,6 +63,18 @@ time either team gets a corner. Whoever holds it at full time takes the whole po
 5. The flag holder at full time wins the pot. No corners means the starter wins.
 6. If the live feed takes a corner back, the flag moves back too.
 7. An abandoned or postponed match refunds every stake.
+
+### Golden corner
+
+Optional, ticked when starting a match. A secret corner from 1 to 12 is picked at random. Whoever the
+flag goes to on that corner takes a quarter of the pot at full time, and the holder gets the rest.
+The number shows once it's been taken. If the match never gets that many corners, the holder takes it all.
+
+### During the match
+
+- The match log lists every corner with its minute, whose corner it was, and who the flag went to.
+  A corner the feed takes back gets its own line.
+- Tap a reaction (😱 🍺 🔥 😂 👏 😤) to let everyone else watching see it.
 
 ### Side pot: guess the corners
 
@@ -30,7 +92,7 @@ Optional, alongside the flag game, and open to players who sit the flag game out
   under the free plan's 100 requests a day. Set `POLL_SECONDS` lower on a paid plan.
 - The flag holder is worked out from the total, so corrections in the feed fix themselves.
 - If the feed is wrong or stuck, the backup controls let you add or remove a corner, end the match, or abandon it.
-- State (players, tokens, the live match, results) is kept in Upstash Redis.
+- Each group's state (players, tokens, the live match, results) is kept in Upstash Redis, one key per group.
 
 ## Set it up (free)
 
@@ -41,7 +103,12 @@ Optional, alongside the flag game, and open to players who sit the flag game out
    This adds the `KV_REST_API_URL` and `KV_REST_API_TOKEN` settings.
 4. In **Settings → Environment Variables**, add:
    - `API_FOOTBALL_KEY`: your key from step 1
-   - `GAME_PIN` (optional): a PIN friends need before they can change anything
+   - `GAME_PIN` (optional): a PIN needed before anyone can start a group or change anything
+   - `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (optional, for alerts): make a pair with
+     `npx web-push generate-vapid-keys`
+   - `VAPID_SUBJECT` (optional): `mailto:` plus your email, so push services can contact you
+   - `CRON_SECRET` (optional): any long random string. Vercel sends it with the morning reminder
+     call so nobody else can trigger it
    - `TIP_URL` (optional): an https link, such as your Buy Me a Coffee page, shown at the bottom of the app
 5. Redeploy, and share the link with your friends.
 
