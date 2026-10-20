@@ -71,6 +71,14 @@
   .reacts span { background: var(--panel); border-radius: 999px; padding: 3px 10px; font-size: 14px; animation: pop .4s ease-out; }
   @keyframes pop { from { transform: scale(.6); opacity: 0; } }
   .gold { color: var(--accent); font-weight: 600; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chips button { min-height: 34px; padding: 4px 12px; font-size: 14px; background: transparent; color: var(--soft); border: 1px solid var(--line); font-weight: 500; }
+  .chips button.on { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+  .form { display: inline-flex; gap: 3px; vertical-align: middle; }
+  .form i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); display: inline-block; }
+  .form i.w { background: var(--accent); }
+  .up { color: var(--accent); }
+  .tip { font-size: 13px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; margin: 10px 0 0; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
@@ -86,6 +94,22 @@
   <button class="ghost groupname hidden" id="groupBtn"></button>
 
   <section id="groups" class="card hidden">
+    <div id="groupSettings" class="hidden" style="margin-bottom:18px">
+      <h2 id="settingsTitle">This group</h2>
+      <p style="margin:0">Join code <span class="code" id="groupCode"></span></p>
+      <p class="meta" style="margin:4px 0 10px">Friends can type this under Join a group, or use the Invite link.</p>
+      <h2>What tokens stand for</h2>
+      <p class="meta" style="margin-top:0">Just a label between friends, like "10 tokens = 1 pint". The app never takes or pays out money.</p>
+      <div class="row">
+        <input id="labelPer" type="number" min="1" inputmode="numeric" placeholder="10" aria-label="How many tokens" style="flex:none;width:80px">
+        <span style="align-self:center">tokens = 1</span>
+        <input id="labelUnit" placeholder="pint" maxlength="24" aria-label="What they stand for">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="labelSave" class="ghost small">Save label</button>
+        <button id="labelClear" class="ghost small hidden">Clear</button>
+      </div>
+    </div>
     <div id="groupsMine">
       <h2>Your groups</h2>
       <ul id="groupList"></ul>
@@ -105,18 +129,20 @@
       <input id="joinCode" placeholder="6-letter code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
       <button id="joinCodeBtn">Join</button>
     </div>
+    <p class="tip">Tip: add Corners to your home screen (Share, then Add to Home Screen) so this phone remembers your groups. If you opened the link inside WhatsApp, open it in Safari or Chrome first.</p>
     <button class="ghost small hidden" id="groupsClose" style="margin-top:12px">Back to the game</button>
   </section>
 
   <div id="game" class="hidden">
   <section id="join" class="card hidden">
-    <h2>Who are you?</h2>
-    <p class="meta" style="margin-top:0">Pick your name so this phone knows it's you.</p>
+    <h2 id="joinTitle">Who are you?</h2>
+    <p class="meta" style="margin-top:0" id="joinWho">Pick your name so this phone knows it's you.</p>
     <div class="row" id="joinNames"></div>
     <div class="row" style="margin-top:10px">
       <input id="joinName" placeholder="New player? Your name" maxlength="30" autocomplete="given-name">
       <button id="joinBtn">Join</button>
     </div>
+    <p class="tip">Opened this inside WhatsApp? Open it in Safari or Chrome and add it to your home screen, so it remembers you next time.</p>
   </section>
 
   <div id="live" class="hidden">
@@ -232,6 +258,22 @@
     </div>
   </section>
 
+  <section class="card" id="boardCard">
+    <h2>Leaderboard</h2>
+    <div class="row" style="margin-bottom:8px">
+      <select id="boardScope" aria-label="Leaderboard for"><option value="comp">This competition</option><option value="all">All time</option></select>
+    </div>
+    <div class="chips" id="boardSort">
+      <button data-sort="net" class="on">Tokens won</button>
+      <button data-sort="winRate">Win rate</button>
+      <button data-sort="flags">Flags</button>
+      <button data-sort="guesser">Best guesser</button>
+      <button data-sort="streak">Streaks</button>
+    </div>
+    <ul id="board" class="ladder"></ul>
+    <p class="meta" id="boardTotals" style="margin-bottom:0"></p>
+  </section>
+
   <section class="card">
     <h2>Results</h2>
     <ul id="history"></ul>
@@ -258,6 +300,59 @@ function compLine(c) {
   const when = c.kind === 'tournament' ? ` · ${day(c.from)} to ${day(c.to)}` : '';
   return `${KIND[c.kind]}${when} · everyone starts on ${c.startTokens} tokens`;
 }
+// The group's token label, e.g. 25 tokens -> "2.5 pints". Empty when the group has none.
+function plural(unit) {
+  const [first, ...rest] = unit.split(' ');
+  return [/s$/i.test(first) ? first : first + 's', ...rest].join(' ');
+}
+function worth(n) {
+  const l = state.label;
+  if (!l) return '';
+  const v = Math.round((Math.abs(n) / l.per) * 10) / 10;
+  return `${v} ${v === 1 ? l.unit : plural(l.unit)}`;
+}
+// How someone stands against where they started, in the group's label if it has one.
+function upDown(tokens, start) {
+  const d = tokens - start;
+  if (!d) return '';
+  const w = worth(d);
+  return `<span class="meta ${d > 0 ? 'up' : ''}">${d > 0 ? '+' : '−'}${Math.abs(d)}${w ? ` · ${w} ${d > 0 ? 'up' : 'down'}` : ''}</span>`;
+}
+
+let boardSort = 'net';
+let boardScope = 'comp';
+const BOARDS = {
+  net: { rank: (s) => s.net, show: (s) => `${s.net > 0 ? '+' : ''}${s.net}${worth(s.net) ? ` <span class="meta">${worth(s.net)}</span>` : ''}` },
+  winRate: { rank: (s) => (s.played ? s.winRate : -1), show: (s) => `${Math.round(s.winRate * 100)}% <span class="meta">of ${s.played}</span>` },
+  flags: { rank: (s) => s.flags, show: (s) => `${s.flags}${s.biggestPot ? ` <span class="meta">best pot ${s.biggestPot}</span>` : ''}` },
+  guesser: {
+    rank: (s) => (s.guesses ? -s.avgGuessError : -Infinity), only: (s) => s.guesses > 0,
+    show: (s) => `${Math.round(s.avgGuessError * 10) / 10} off <span class="meta">${s.guessWins} side pot${s.guessWins === 1 ? '' : 's'}</span>`,
+  },
+  streak: { rank: (s) => s.bestStreak * 1000 + s.streak, show: (s) => `${s.bestStreak} <span class="meta">best · now ${s.streak}</span>` },
+};
+function renderBoard(v) {
+  const st = boardScope === 'all' ? state.stats.all : v && state.stats.byComp[v.id];
+  if (!st) { $('boardCard').classList.add('hidden'); return; }
+  $('boardCard').classList.remove('hidden');
+  $('boardScope').options[0].textContent = v ? v.name : 'This competition';
+  $('boardScope').value = boardScope;
+  [...$('boardSort').children].forEach((b) => b.classList.toggle('on', b.dataset.sort === boardSort));
+  const b = BOARDS[boardSort];
+  const rows = Object.entries(st.players)
+    .filter(([id, s]) => state.players[id] && s.played + s.guesses > 0 && (!b.only || b.only(s)))
+    .sort((x, y) => b.rank(y[1]) - b.rank(x[1]));
+  $('board').innerHTML = rows.map(([id, s], i) => {
+    const form = `<span class="form" aria-label="Last ${s.form.length}: ${s.form.join(' ')}">${s.form.map((r) => `<i class="${r === 'W' ? 'w' : ''}"></i>`).join('')}</span>`;
+    const extra = [s.golden && `★${s.golden}`, s.lateSteals && `${s.lateSteals} late steal${s.lateSteals === 1 ? '' : 's'}`].filter(Boolean).join(' · ');
+    return `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''} ${form}${extra ? `<br><span class="meta">${extra}</span>` : ''}</span><span style="text-align:right">${b.show(s)}</span></li>`;
+  }).join('') || `<li class="meta plain">${boardSort === 'guesser' ? 'Nobody has guessed the corners yet.' : 'No matches played yet.'}</li>`;
+  const t = st.totals;
+  $('boardTotals').textContent = t.matches
+    ? `${t.matches} match${t.matches === 1 ? '' : 'es'} · ${t.corners} corners${t.mostCorners ? ` · most in one: ${t.mostCorners.corners} (${t.mostCorners.label})` : ''}`
+    : '';
+}
+
 // Which competition's table this phone is looking at. Follows the live or next match unless picked.
 let viewComp = null;
 
@@ -336,8 +431,8 @@ async function groupCall(type, extra, pinNeeded = false) {
   }
   rememberGroup(body.group);
   openGroup(body.group.id);
-  if (body.result) setMe(body.result);
   state = body;
+  if (body.result) setMe(body.result);
   showGroups = false;
   render();
   return body;
@@ -366,6 +461,8 @@ let me = groupId ? stored('corners-me:' + groupId) : null;
 function setMe(id) {
   me = id;
   store('corners-me:' + groupId, id);
+  const n = state?.players?.[id]?.name;
+  if (n) store('corners-name', n); // filled in next time this phone joins a group
 }
 // "Arsenal v Chelsea" -> "ARS v CHE" so it fits the scoreboard
 function shortLabel(label) {
@@ -380,6 +477,17 @@ function renderGroups() {
   $('groupsClose').classList.toggle('hidden', !groupId);
   $('groupList').innerHTML = groups.map((g) =>
     `<li class="group${g.id === groupId ? ' current' : ''}" data-group="${esc(g.id)}"><span>${esc(g.name)}</span><span class="meta">${g.id === groupId ? 'open' : 'switch'}</span></li>`).join('');
+  $('groupSettings').classList.toggle('hidden', !state);
+  if (state) {
+    $('settingsTitle').textContent = state.group.name;
+    $('groupCode').textContent = state.group.code;
+    $('labelClear').classList.toggle('hidden', !state.label);
+    if (!document.activeElement?.closest?.('#groupSettings')) {
+      $('labelPer').value = state.label?.per ?? '';
+      $('labelUnit').value = state.label?.unit ?? '';
+    }
+  }
+  if (!$('newGroupMe').value && document.activeElement !== $('newGroupMe')) $('newGroupMe').value = stored('corners-name') || '';
   $('groupBtn').classList.toggle('hidden', !state);
   if (state) $('groupBtn').textContent = `${state.group.name} ▾`;
   $('game').classList.toggle('hidden', open || !state);
@@ -438,7 +546,7 @@ function render() {
       const off = g.guess - m.corners;
       return `<li class="${m.closest.includes(id) ? 'holder' : ''}"><span>${esc(name(id))}${id === me ? ' (you)' : ''} · <b>${g.guess}</b></span><span class="meta">${off === 0 ? 'spot on' : `${Math.abs(off)} ${off > 0 ? 'over' : 'under'}`} · ${g.stake} tokens</span></li>`;
     }).join('');
-    $('matchComp').textContent = `For ${compById(m.compId)?.name || 'the competition'}`;
+    $('matchComp').textContent = `For ${compById(m.compId)?.name || 'the competition'}${worth(m.pot) ? ` · pot worth ${worth(m.pot)}` : ''}`;
     const gd = m.golden;
     $('goldenNote').classList.toggle('hidden', !gd);
     if (gd) {
@@ -489,6 +597,12 @@ function render() {
   const known = me && state.players[me];
   $('join').classList.toggle('hidden', !!known);
   if (!known) {
+    const names = Object.values(state.players).map((p) => p.name);
+    $('joinTitle').textContent = `Welcome to ${state.group.name}`;
+    $('joinWho').textContent = names.length
+      ? `${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)} are` : `${names[0]} is`} playing. Tap your name, or add yours.`
+      : 'Nobody has joined yet. Add your name to get started.';
+    if (!$('joinName').value && document.activeElement !== $('joinName')) $('joinName').value = stored('corners-name') || '';
     $('joinNames').innerHTML = Object.entries(state.players).map(([id, p]) =>
       `<button class="ghost" data-me="${id}">I'm ${esc(p.name)}</button>`).join('');
   }
@@ -506,12 +620,13 @@ function render() {
   }
   const rows = v ? v.table : [];
   $('table').innerHTML = rows.map(({ id, tokens }, i) =>
-    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}</span><span><span class="tok">${tokens}</span>${v.status === 'open' ? ` <button class="ghost small" data-remove="${id}" title="Remove">✕</button>` : ''}</span></li>`).join('')
+    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}<br>${upDown(tokens, v.startTokens)}</span><span><span class="tok">${tokens}</span>${v.status === 'open' ? ` <button class="ghost small" data-remove="${id}" title="Remove">✕</button>` : ''}</span></li>`).join('')
     || '<li class="meta plain">No players yet.</li>';
 
+  renderBoard(v);
   $('history').innerHTML = (v?.history || []).map((h) => h.abandoned
     ? `<li><span>${esc(h.label)}</span><span class="meta">abandoned, stakes refunded</span></li>`
-    : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corners</span></span><span style="text-align:right">${esc(name(h.winner))} won <b>${h.pot}</b>${h.sidePot
+    : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corner${h.corners === 1 ? '' : 's'}</span></span><span style="text-align:right">${esc(name(h.winner))} won <b>${h.pot}</b>${h.sidePot
         ? `<br><span class="meta">Side pot ${h.sidePot}: ${h.guessWinners.map((id) => `${esc(name(id))} (${h.guesses[id].guess})`).join(', ')}</span>` : ''}${h.golden?.winner
         ? `<br><span class="meta">★ Golden corner ${h.golden.corner}: ${esc(name(h.golden.winner))} +${h.golden.bonus}</span>` : ''}</span></li>`).join('')
     || '<li class="meta plain">No matches yet.</li>';
@@ -550,6 +665,17 @@ $('joinBtn').onclick = async () => {
   if (body?.result) { setMe(body.result); $('joinName').value = ''; render(); }
 };
 $('joinName').onkeydown = (e) => { if (e.key === 'Enter') $('joinBtn').click(); };
+
+$('boardScope').onchange = () => { boardScope = $('boardScope').value; render(); };
+$('boardSort').onclick = (e) => {
+  const b = e.target.closest('button[data-sort]');
+  if (b) { boardSort = b.dataset.sort; render(); }
+};
+$('labelSave').onclick = () => {
+  if (!$('labelUnit').value.trim()) { $('err').textContent = 'Say what the tokens stand for, like pint'; return; }
+  act('setLabel', { per: Number($('labelPer').value || 10), unit: $('labelUnit').value });
+};
+$('labelClear').onclick = () => act('setLabel', { unit: '' });
 
 $('groupBtn').onclick = () => { showGroups = !showGroups; render(); };
 $('groupsClose').onclick = () => { showGroups = false; render(); };

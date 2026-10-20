@@ -27,6 +27,19 @@ A tournament or one-off match never touches the season's tokens. Pick what the n
 **Playing for**, and look back at any competition's final table from the table card. A group from
 before competitions carries on as its first season, with every balance and result kept.
 
+## Leaderboards and running totals
+
+The leaderboard ranks players for the competition you're looking at, or for all time across every
+competition in the group: tokens won, win rate, flags won, best corner guesser and streaks, with
+each player's last five results. Late steals (the flag reaching the winner in the 90th minute or
+later) and golden corners are counted too. Everything is worked out from the saved results.
+
+## What tokens stand for
+
+In the group menu, a group can give its tokens a friendly label, such as "10 tokens = 1 pint". It
+shows beside the pot and how far each player is up or down. It's only a label between friends:
+the app never sells tokens, takes money or pays anything out.
+
 ## Rules
 
 1. Everyone starts the season with the same tokens (100 unless you pick another amount under New season). Most tokens at the end of the season wins.
