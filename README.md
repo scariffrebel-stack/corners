@@ -34,10 +34,10 @@ competition in the group: tokens won, win rate, flags won, best corner guesser a
 each player's last five results. Late steals (the flag reaching the winner in the 90th minute or
 later) and golden corners are counted too. Everything is worked out from the saved results.
 
-## What tokens stand for
+## What do Tokens make
 
-In the group menu, a group can give its tokens a friendly label, such as "10 tokens = 1 pint". It
-shows beside the pot and how far each player is up or down. It's only a label between friends:
+In the group menu, a group can say what its tokens make, such as "10 tokens = 1 pint". It
+shows beside the pot and how far each player is up or down. It's only for fun between friends:
 the app never sells tokens, takes money or pays anything out.
 
 ## Alerts

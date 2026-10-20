@@ -161,15 +161,15 @@
           <div class="chips" id="teamList"></div>
         </div>
       </div>
-      <h2>What tokens stand for</h2>
-      <p class="meta" style="margin-top:0">Just a label between friends, like "10 tokens = 1 pint". The app never takes or pays out money.</p>
+      <h2>What do Tokens make!!</h2>
+      <p class="meta" style="margin-top:0">Something to play for between friends, like "10 tokens = 1 pint". The app never takes or pays out money.</p>
       <div class="row">
         <input id="labelPer" type="number" min="1" inputmode="numeric" placeholder="10" aria-label="How many tokens" style="flex:none;width:80px">
         <span style="align-self:center">tokens = 1</span>
         <input id="labelUnit" placeholder="pint" maxlength="24" aria-label="What they stand for">
       </div>
       <div class="row" style="margin-top:8px">
-        <button id="labelSave" class="ghost small">Save label</button>
+        <button id="labelSave" class="ghost small">Save</button>
         <button id="labelClear" class="ghost small hidden">Clear</button>
       </div>
     </div>
@@ -831,7 +831,7 @@ $('boardSort').onclick = (e) => {
   if (b) { boardSort = b.dataset.sort; render(); }
 };
 $('labelSave').onclick = () => {
-  if (!$('labelUnit').value.trim()) { $('err').textContent = 'Say what the tokens stand for, like pint'; return; }
+  if (!$('labelUnit').value.trim()) { $('err').textContent = 'Say what the tokens make, like pint'; return; }
   act('setLabel', { per: Number($('labelPer').value || 10), unit: $('labelUnit').value });
 };
 $('teamList').onclick = (e) => {
