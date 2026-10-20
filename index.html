@@ -53,6 +53,17 @@
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
   .row > input, .row > select { flex: 1; min-width: 0; }
   input.stake { width: 84px; flex: none; text-align: center; min-height: 40px; }
+  /* Bottom tabs: each section of the game shows only on its own tab. */
+  main.has-tabs { padding-bottom: 88px; }
+  #game[data-on="play"] [data-tab]:not([data-tab="play"]),
+  #game[data-on="table"] [data-tab]:not([data-tab="table"]),
+  #game[data-on="results"] [data-tab]:not([data-tab="results"]) { display: none !important; }
+  .tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); z-index: 5; }
+  .tabs button { flex: 1; max-width: 160px; background: transparent; color: var(--muted); border: 1px solid transparent; font-weight: 600; }
+  .tabs button.on { color: var(--bg); background: var(--accent); }
+  .fixtures { display: grid; gap: 8px; margin: 0 0 8px; }
+  .fixtures li { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .fixtures li.on { outline: 2px solid var(--accent); }
   .err { color: var(--bad); font-size: 14px; margin: 16px 20px 0; }
   .err:empty { display: none; }
   .warn { color: var(--accent); }
@@ -61,7 +72,8 @@
   details summary { cursor: pointer; color: var(--muted); min-height: 44px; display: flex; align-items: center; }
   input.guess { width: 96px; flex: none; text-align: center; }
   .ladder li .tok { font: 700 18px 'Barlow Condensed', sans-serif; }
-  .groupname { display: block; max-width: 100%; margin: 12px 20px 0; min-height: 36px; padding: 4px 12px; font-size: 14px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .groupbar { margin: 12px 20px 0; }
+  .groupbar button { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   li.group { cursor: pointer; }
   li.group.current { outline: 2px solid var(--accent); }
   label.check { display: flex; gap: 10px; align-items: center; min-height: 44px; color: var(--soft); font-size: 15px; }
@@ -84,6 +96,13 @@
   ol.steps li b { color: var(--text); }
   ol.steps li::before { counter-increment: step; content: counter(step); position: absolute; left: 12px; top: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--bg); font: 700 14px/22px 'Barlow Condensed', sans-serif; text-align: center; }
   .tip { font-size: 13px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; margin: 10px 0 0; }
+  .group-name { font: 700 26px 'Barlow Condensed', sans-serif; color: var(--text); margin: 0 0 6px; }
+  /* Someone new sees only the welcome until they pick their name, then the game opens up. */
+  #game.newcomer > :not(#join) { display: none !important; }
+  .group-block { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+  #groups details summary, #otherDay summary { color: var(--soft); justify-content: space-between; }
+  #groups details summary::after, #otherDay summary::after { content: '+'; font-size: 22px; color: var(--muted); }
+  #groups details[open] summary::after, #otherDay[open] summary::after { content: '−'; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
@@ -97,7 +116,12 @@
       <button class="ghost small" id="invite">Invite</button>
     </div>
   </header>
-  <button class="ghost groupname hidden" id="groupBtn"></button>
+  <nav class="chips groupbar hidden" id="groupBar" aria-label="Your groups">
+    <span id="groupChips" style="display:contents"></span>
+    <button id="groupBtn" aria-label="Group settings">Groups ▾</button>
+  </nav>
+
+  <p class="meta hidden" id="joiningNote" style="margin:20px">Opening your invite…</p>
 
   <section id="howto" class="card hidden">
     <h2>How to play</h2>
@@ -113,11 +137,21 @@
   </section>
 
   <section id="groups" class="card hidden">
-    <div id="groupSettings" class="hidden" style="margin-bottom:18px">
-      <h2 id="settingsTitle">This group</h2>
-      <p style="margin:0">Join code <span class="code" id="groupCode"></span></p>
-      <p class="meta" style="margin:4px 0 10px">Friends can type this under Join a group, or use the Invite link.</p>
-      <div id="alertsBox" class="hidden" style="margin-bottom:14px">
+    <div id="groupSettings" class="hidden">
+      <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:6px">
+        <h2 style="margin:0">Your group</h2>
+        <button class="ghost small" id="groupsClose">Done</button>
+      </div>
+      <div class="row" style="align-items:center;margin-bottom:6px">
+        <p class="group-name" id="settingsTitle" style="flex:1;margin:0">This group</p>
+        <button class="ghost small" id="renameBtn">Rename</button>
+      </div>
+      <div class="row" style="align-items:center;margin-bottom:4px">
+        <p style="margin:0;flex:1">Join code <span class="code" id="groupCode"></span></p>
+        <button class="small" id="groupInvite">Send invite</button>
+      </div>
+      <p class="meta" style="margin:0 0 16px">Friends tap your invite link, or type this code.</p>
+      <div id="alertsBox" class="hidden" style="margin-bottom:16px">
         <h2>Alerts on this phone</h2>
         <p class="meta" style="margin-top:0" id="alertsNote">Get a buzz when someone puts a stake down or a match kicks off. Nothing is sent between 11pm and 8am.</p>
         <button id="alertsBtn" class="ghost small">Turn on alerts</button>
@@ -139,27 +173,33 @@
         <button id="labelClear" class="ghost small hidden">Clear</button>
       </div>
     </div>
-    <div id="groupsMine">
-      <h2>Your groups</h2>
+    <div id="groupsMine" class="group-block">
+      <h2>Switch group</h2>
       <ul id="groupList"></ul>
     </div>
-    <h2 style="margin-top:18px">Start a group</h2>
-    <p class="meta" style="margin-top:0">For your mates, your family or the regulars at the pub. You get a link to send them.</p>
-    <div class="row">
-      <input id="newGroupName" placeholder="Group name" maxlength="40">
+    <div id="groupsMore" class="group-block">
+      <h2 id="moreTitle">Other groups</h2>
+      <details id="newGroupBox">
+        <summary>Start a new group</summary>
+        <p class="meta" style="margin-top:0">For your mates, your family or the regulars at the pub. You get a link to send them.</p>
+        <div class="row">
+          <input id="newGroupName" placeholder="Group name (needed)" maxlength="40" required oninvalid="this.setCustomValidity('Give the group a name')" oninput="this.setCustomValidity('')">
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input id="newGroupMe" placeholder="Your name" maxlength="30" autocomplete="given-name">
+          <input id="newGroupTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens (100)" aria-label="Starting tokens each">
+        </div>
+        <div class="row" style="margin-top:8px"><button class="big" id="createGroup">Start group</button></div>
+      </details>
+      <details id="joinGroupBox">
+        <summary>Join a group with a code</summary>
+        <div class="row">
+          <input id="joinCode" placeholder="6-letter code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
+          <button id="joinCodeBtn">Join</button>
+        </div>
+      </details>
+      <p class="tip">Tip: add Corners to your home screen (Share, then Add to Home Screen) so this phone remembers your groups. If you opened the link inside WhatsApp, open it in Safari or Chrome first.</p>
     </div>
-    <div class="row" style="margin-top:8px">
-      <input id="newGroupMe" placeholder="Your name" maxlength="30" autocomplete="given-name">
-      <input id="newGroupTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens (100)" aria-label="Starting tokens each">
-    </div>
-    <div class="row" style="margin-top:8px"><button class="big" id="createGroup">Start group</button></div>
-    <h2 style="margin-top:18px">Join a group</h2>
-    <div class="row">
-      <input id="joinCode" placeholder="6-letter code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
-      <button id="joinCodeBtn">Join</button>
-    </div>
-    <p class="tip">Tip: add Corners to your home screen (Share, then Add to Home Screen) so this phone remembers your groups. If you opened the link inside WhatsApp, open it in Safari or Chrome first.</p>
-    <button class="ghost small hidden" id="groupsClose" style="margin-top:12px">Back to the game</button>
   </section>
 
   <div id="game" class="hidden">
@@ -171,10 +211,11 @@
       <input id="joinName" placeholder="New player? Your name" maxlength="30" autocomplete="given-name">
       <button id="joinBtn">Join</button>
     </div>
+    <button class="ghost small" id="joinHowto" style="margin-top:10px">New to Corners? How to play</button>
     <p class="tip">Opened this inside WhatsApp? Open it in Safari or Chrome and add it to your home screen, so it remembers you next time.</p>
   </section>
 
-  <div id="live" class="hidden">
+  <div id="live" class="hidden" data-tab="play">
     <section class="scoreboard">
       <div><span>MATCH</span><b id="matchLabel"></b></div>
       <div><span>CORNERS</span><b id="corners">0</b></div>
@@ -225,7 +266,7 @@
     </section>
   </div>
 
-  <section id="compCard" class="card hidden">
+  <section id="compCard" class="card hidden" data-tab="play">
     <h2>Playing for</h2>
     <div class="row">
       <select id="compPick" aria-label="Competition for the next match"></select>
@@ -254,13 +295,18 @@
     </details>
   </section>
 
-  <section id="setup" class="card hidden">
+  <section id="setup" class="card hidden" data-tab="play">
     <h2>New match</h2>
-    <div class="row">
-      <input type="date" id="date">
-      <button class="ghost" id="loadFixtures">Find matches</button>
-    </div>
-    <div class="row" style="margin-top:8px"><select id="fixture"><option value="">Pick a Premier League match</option><option value="manual" data-label="Test match">Test match (tap corners yourself)</option></select></div>
+    <p class="meta" style="margin-top:0" id="fixturesDay">Today's matches</p>
+    <ul id="fixtureList" class="fixtures"></ul>
+    <select id="fixture" class="hidden" aria-hidden="true"></select>
+    <details id="otherDay">
+      <summary>Another day, or a test match</summary>
+      <div class="row">
+        <input type="date" id="date" aria-label="Match day">
+        <button class="ghost small" id="testMatch">Test match</button>
+      </div>
+    </details>
     <p class="meta">Everyone sets their own stake on their phone. Leave it blank to sit this one out.</p>
     <ul id="stakes"></ul>
     <h2 style="margin-top:18px">Side pot · guess the corners</h2>
@@ -276,7 +322,7 @@
     <div class="row" style="margin-top:8px"><button class="big" id="start">Shuffle and start</button></div>
   </section>
 
-  <section class="card">
+  <section class="card" data-tab="table">
     <h2 id="tableTitle">Table</h2>
     <div class="row hidden" id="compViewRow" style="margin-bottom:8px"><select id="compView" aria-label="Show the table for"></select></div>
     <p class="meta hidden" id="compWinners" style="margin-top:0"></p>
@@ -287,7 +333,7 @@
     </div>
   </section>
 
-  <section class="card" id="boardCard">
+  <section class="card" id="boardCard" data-tab="table">
     <h2>Leaderboard</h2>
     <div class="row" style="margin-bottom:8px">
       <select id="boardScope" aria-label="Leaderboard for"><option value="comp">This competition</option><option value="all">All time</option></select>
@@ -303,7 +349,7 @@
     <p class="meta" id="boardTotals" style="margin-bottom:0"></p>
   </section>
 
-  <section class="card">
+  <section class="card" data-tab="results">
     <h2>Results</h2>
     <ul id="history"></ul>
     <div class="row" style="margin-top:10px">
@@ -311,6 +357,12 @@
       <span class="meta" id="startTokensNote" style="align-self:center"></span>
     </div>
   </section>
+
+  <nav class="tabs" id="tabs" aria-label="Sections">
+    <button data-show="play" class="on">Play</button>
+    <button data-show="table">Table</button>
+    <button data-show="results">Results</button>
+  </nav>
   </div>
 
   <div class="err" id="err"></div>
@@ -490,6 +542,7 @@ async function act(type, extra = {}) {
     return;
   }
   state = body;
+  rememberGroup(body.group); // keeps a rename in this phone's list of groups
   render();
   return body;
 }
@@ -512,6 +565,7 @@ async function groupCall(type, extra, pinNeeded = false) {
   state = body;
   if (body.result) setMe(body.result);
   showGroups = false;
+  $('newGroupBox').open = $('joinGroupBox').open = false;
   render();
   return body;
 }
@@ -535,7 +589,9 @@ async function refresh() {
 
 // How to play shows by itself the first time a phone opens Corners, and from the ? button after.
 let showHowto = !stored('corners-howto-seen');
+let joining = false; // opened from an invite link and still fetching that group
 let lastHolder = null;
+let wasLive = false;
 let showGroups = false;
 let me = groupId ? stored('corners-me:' + groupId) : null;
 function setMe(id) {
@@ -552,13 +608,20 @@ function shortLabel(label) {
 
 function renderGroups() {
   $('howto').classList.toggle('hidden', !showHowto);
-  const open = showGroups || !groupId;
+  const open = (showGroups || !groupId) && !joining;
+  $('joiningNote').classList.toggle('hidden', !joining);
   $('groups').classList.toggle('hidden', !open);
-  $('groupsMine').classList.toggle('hidden', !groups.length);
-  $('groupsClose').classList.toggle('hidden', !groupId);
-  $('groupList').innerHTML = groups.map((g) =>
-    `<li class="group${g.id === groupId ? ' current' : ''}" data-group="${esc(g.id)}"><span>${esc(g.name)}</span><span class="meta">${g.id === groupId ? 'open' : 'switch'}</span></li>`).join('');
+  // Only the other groups are listed: the open one is the "Your group" block above.
+  const others = groups.filter((g) => g.id !== groupId);
+  $('groupsMine').classList.toggle('hidden', !others.length);
+  $('groupList').innerHTML = others.map((g) =>
+    `<li class="group" data-group="${esc(g.id)}"><span>${esc(g.name)}</span><span class="meta">switch</span></li>`).join('');
   $('groupSettings').classList.toggle('hidden', !state);
+  // With no group yet, starting or joining one is the whole point, so both stay open and need no divider.
+  $('groupsMore').classList.toggle('group-block', !!state);
+  $('moreTitle').textContent = state ? 'Other groups' : 'Get started';
+  $('newGroupBox').open ||= !state;
+  $('joinGroupBox').open ||= !state;
   if (state) renderAlerts();
   if (state) {
     $('settingsTitle').textContent = state.group.name;
@@ -570,9 +633,13 @@ function renderGroups() {
     }
   }
   if (!$('newGroupMe').value && document.activeElement !== $('newGroupMe')) $('newGroupMe').value = stored('corners-name') || '';
-  $('groupBtn').classList.toggle('hidden', !state);
-  if (state) $('groupBtn').textContent = `${state.group.name} ▾`;
+  // The home screen shows every group this phone is in, so switching is one tap.
+  $('groupBar').classList.toggle('hidden', !state);
+  $('groupChips').innerHTML = groups.map((g) =>
+    `<button class="${g.id === groupId ? 'on' : ''}" data-switch="${esc(g.id)}">${esc(g.name)}</button>`).join('');
+  $('groupBtn').textContent = showGroups ? 'Close ▴' : (groups.length > 1 ? 'Groups ▾' : 'Group ▾');
   $('game').classList.toggle('hidden', open || !state);
+  document.querySelector('main').classList.toggle('has-tabs', !open && !!state);
   $('invite').classList.toggle('hidden', !state);
   return !open && state;
 }
@@ -583,6 +650,7 @@ function renderComps() {
   const next = compById(state.nextComp);
   $('compCard').classList.toggle('hidden', live);
   $('setup').classList.toggle('hidden', live || !next);
+  if (!live && next && fixturesFor == null) loadFixtures();
   if (document.activeElement !== $('compPick')) {
     $('compPick').innerHTML = open.map((c) =>
       `<option value="${esc(c.id)}"${c.id === state.nextComp ? ' selected' : ''}>${esc(c.name)}</option>`).join('')
@@ -601,6 +669,9 @@ function render() {
   $('coffee').classList.toggle('hidden', !state.tipUrl);
   if (state.tipUrl) $('coffee').href = state.tipUrl;
   $('live').classList.toggle('hidden', !m);
+  if (m && !wasLive) showTab('play'); // a match kicking off brings everyone to it
+  wasLive = !!m;
+  document.querySelector('#tabs [data-show="play"]').textContent = m ? '● Live' : 'Play';
 
   $('livePill').classList.toggle('hidden', !m || Date.now() < m.kickoff);
   $('livePill').textContent = m?.fixtureId === 'manual' ? 'TEST' : 'LIVE';
@@ -662,6 +733,8 @@ function render() {
       $('stakes').innerHTML = Object.entries(state.players).map(([id, p]) =>
         `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${bal(id)} tokens</span></span><input class="stake" type="number" min="0" max="${bal(id)}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${state.pendingStakes[id] ?? ''}" placeholder="—"></li>`).join('')
         || '<li class="meta plain">Add players below first.</li>';
+      // The add-player box lives on the Table tab, so point there while the game is short of players.
+      if (Object.keys(state.players).length < 2) $('stakes').innerHTML += '<li class="meta plain">You need at least two players. Send the invite, or add them on the Table tab.</li>';
     }
     const meKnown = me && state.players[me];
     const mine = meKnown && state.pendingGuesses[me];
@@ -680,6 +753,7 @@ function render() {
 
   const known = me && state.players[me];
   $('join').classList.toggle('hidden', !!known);
+  $('game').classList.toggle('newcomer', !known);
   if (!known) {
     const names = Object.values(state.players).map((p) => p.name);
     $('joinTitle').textContent = `Welcome to ${state.group.name}`;
@@ -717,9 +791,10 @@ function render() {
 }
 
 document.addEventListener('click', (e) => {
-  const g = e.target.closest('li[data-group]');
+  const g = e.target.closest('li[data-group], button[data-switch]');
   if (g) {
-    if (g.dataset.group !== groupId) openGroup(g.dataset.group);
+    const id = g.dataset.group || g.dataset.switch;
+    if (id !== groupId) openGroup(id);
     showGroups = false;
     render();
     refresh();
@@ -774,14 +849,27 @@ $('howtoClose').onclick = () => { showHowto = false; store('corners-howto-seen',
 
 $('groupBtn').onclick = () => { showGroups = !showGroups; render(); };
 $('groupsClose').onclick = () => { showGroups = false; render(); };
-$('createGroup').onclick = () => groupCall('create', {
-  name: $('newGroupName').value, player: $('newGroupMe').value, startTokens: $('newGroupTokens').value,
-}).then((ok) => { if (ok) ['newGroupName', 'newGroupMe', 'newGroupTokens'].forEach((id) => { $(id).value = ''; }); });
+$('createGroup').onclick = () => {
+  if (!$('newGroupName').value.trim()) {
+    $('newGroupName').value = '';
+    $('newGroupName').reportValidity(); // "Give the group a name" bubble, right on the box
+    return;
+  }
+  groupCall('create', {
+    name: $('newGroupName').value, player: $('newGroupMe').value, startTokens: $('newGroupTokens').value,
+  }).then((ok) => { if (ok) ['newGroupName', 'newGroupMe', 'newGroupTokens'].forEach((id) => { $(id).value = ''; }); });
+};
+$('renameBtn').onclick = () => {
+  const name = prompt('What should this group be called?', state.group.name);
+  if (name != null && name.trim() && name.trim() !== state.group.name) act('renameGroup', { name });
+};
+$('joinHowto').onclick = () => { showHowto = true; render(); scrollTo({ top: 0, behavior: 'smooth' }); };
 $('joinCodeBtn').onclick = () => {
   if ($('joinCode').value.trim()) groupCall('join', { code: $('joinCode').value }).then((ok) => { if (ok) $('joinCode').value = ''; });
 };
 $('joinCode').onkeydown = (e) => { if (e.key === 'Enter') $('joinCodeBtn').click(); };
 
+$('groupInvite').onclick = () => $('invite').click();
 $('invite').onclick = async () => {
   const url = `${location.origin}/?join=${state.group.code}`;
   const text = `Join ${state.group.name} on Corners: whoever holds the flag at full time wins the pot. Code ${state.group.code}.`;
@@ -821,7 +909,7 @@ $('compCreate').onclick = async () => {
   $('compNew').open = false;
   viewComp = null;
   const c = compById(body.nextComp);
-  if (c?.kind === 'tournament') { $('date').value = c.from; }
+  if (c?.kind === 'tournament') { $('date').value = c.from; loadFixtures(); }
   render();
 };
 $('compEnd').onclick = () => {
@@ -843,22 +931,70 @@ $('add').onclick = () => {
 };
 $('newName').onkeydown = (e) => { if (e.key === 'Enter') $('add').click(); };
 
-const TEST_OPTION = '<option value="manual" data-label="Test match">Test match (tap corners yourself)</option>';
-$('date').value = new Date().toISOString().slice(0, 10);
-$('loadFixtures').onclick = async () => {
-  $('err').textContent = '';
-  const r = await fetch('/api/fixtures?date=' + $('date').value);
-  const body = await r.json();
-  if (!r.ok || body.error) { $('err').textContent = body.error || 'Could not load matches'; return; }
-  $('fixture').innerHTML = TEST_OPTION + (body.fixtures.length
-    ? body.fixtures.map((f) => `<option value="${esc(f.id)}" data-label="${esc(f.label)}" data-kickoff="${esc(f.kickoff)}">${esc(f.label)} · ${new Date(f.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</option>`).join('')
-    : '<option value="">No Premier League matches that day</option>');
+// The day's matches load on their own and show as a list, so starting one is a tap.
+const TEST_MATCH = { id: 'manual', label: 'Test match' };
+const today = () => new Date().toISOString().slice(0, 10);
+let fixtures = null; // null while loading
+let fixturesFor = null; // the day they were loaded for
+let picked = null;
+$('date').value = today();
+
+async function loadFixtures() {
+  const day = $('date').value || today();
+  fixturesFor = day;
+  fixtures = null;
+  if (picked?.id !== TEST_MATCH.id) picked = null;
+  renderFixtures();
+  try {
+    const r = await fetch('/api/fixtures?date=' + day);
+    const body = await r.json();
+    if (!r.ok || body.error) throw new Error(body.error || 'Could not load matches');
+    if (fixturesFor === day) fixtures = body.fixtures;
+  } catch (e) {
+    if (fixturesFor === day) { fixtures = []; $('err').textContent = e.message; }
+  }
+  renderFixtures();
+}
+
+function renderFixtures() {
+  const day = fixturesFor || today();
+  $('fixturesDay').textContent = day === today() ? 'Today’s matches'
+    : `Matches on ${new Date(day + 'T12:00').toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}`;
+  const list = [...(fixtures || []), ...(picked?.id === TEST_MATCH.id ? [TEST_MATCH] : [])];
+  const when = (f) => (f.kickoff ? new Date(f.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'tap corners yourself');
+  $('fixtureList').innerHTML = fixtures == null ? '<li class="meta plain">Loading matches…</li>'
+    : list.length ? list.map((f) => `<li data-fixture="${esc(f.id)}" class="${picked?.id === f.id ? 'on' : ''}"><span>${esc(f.label)}</span><span class="meta">${when(f)}</span></li>`).join('')
+    : `<li class="meta plain">No Premier League matches ${day === today() ? 'today' : 'that day'}. Pick another day below.</li>`;
+  $('start').disabled = !picked;
+}
+
+$('fixtureList').onclick = (e) => {
+  const li = e.target.closest('li[data-fixture]');
+  if (!li) return;
+  picked = [...(fixtures || []), TEST_MATCH].find((f) => String(f.id) === li.dataset.fixture) || null;
+  renderFixtures();
 };
+$('date').onchange = loadFixtures;
+$('testMatch').onclick = () => { picked = TEST_MATCH; $('otherDay').open = false; renderFixtures(); };
 
 $('start').onclick = () => {
-  const opt = $('fixture').selectedOptions[0];
-  act('startMatch', { fixtureId: opt?.value, label: opt?.dataset.label, kickoff: opt?.dataset.kickoff, golden: $('golden').checked });
+  if (!picked) return;
+  act('startMatch', { fixtureId: picked.id, label: picked.label, kickoff: picked.kickoff, golden: $('golden').checked })
+    .then((ok) => { if (ok) { picked = null; renderFixtures(); } });
 };
+
+// Bottom tabs. Play is where everything starts; a match going live brings you back to it.
+let tab = 'play';
+function showTab(t) {
+  tab = t;
+  $('game').dataset.on = t;
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.show === t));
+}
+$('tabs').onclick = (e) => {
+  const b = e.target.closest('button[data-show]');
+  if (b) { showTab(b.dataset.show); scrollTo({ top: 0 }); }
+};
+showTab('play');
 
 // A join link (/?join=CODE) opens that group on this phone.
 const params = new URLSearchParams(location.search);
@@ -869,8 +1005,12 @@ if (params.get('g') && /^[a-z0-9]{1,20}$/.test(params.get('g'))) {
   openGroup(params.get('g'));
   refresh();
 } else if (joinParam) {
+  // Straight to that group's welcome: the how-to is a tap away on it, rather than in the way.
   history.replaceState(null, '', location.pathname);
-  groupCall('join', { code: joinParam });
+  joining = true;
+  showHowto = false;
+  render();
+  groupCall('join', { code: joinParam }).finally(() => { joining = false; render(); });
 } else {
   refresh();
 }
