@@ -336,3 +336,38 @@ test('a group can be renamed but never left without a name', () => {
   assert.throws(() => g.renameGroup(s, '   '), /name/);
   assert.equal(s.group.name, 'Sunday League');
 });
+
+test('a corner called in the room moves the flag at once and is not counted again when the feed catches up', () => {
+  const { s, ids: [a, b, c] } = setup();
+  g.startMatch(s, { fixtureId: '1', stakes: { [a]: 10, [b]: 10, [c]: 10 } }, noShuffle, 0);
+  g.callCorner(s, b, 1000);
+  assert.equal(g.cornerCount(s.match), 1);
+  assert.equal(g.holderId(s.match), b);
+  g.callCorner(s, c, 3000); // the same corner, shouted by someone else
+  assert.equal(g.cornerCount(s.match), 1);
+  g.applyFeed(s, { corners: 1, status: '1H' }, 60000); // the feed reports it a minute later
+  assert.equal(g.cornerCount(s.match), 1);
+  g.callCorner(s, a, 70000);
+  g.applyFeed(s, { corners: 1, status: '1H' }, 80000); // not in the feed yet, so it still counts
+  assert.equal(g.cornerCount(s.match), 2);
+  assert.equal(s.match.log.at(-1).by, a);
+});
+
+test('a called corner the feed never saw is dropped at full time, but a backup correction stays', () => {
+  const { s, ids: [a, b] } = setup(['Ann', 'Ben']);
+  g.startMatch(s, { fixtureId: '1', stakes: { [a]: 10, [b]: 10 } }, noShuffle, 0);
+  g.manualCorner(s, 1, 500); // the feed missed one, so it's fixed by hand
+  g.callCorner(s, a, 1000); // a mis-tap
+  assert.equal(g.cornerCount(s.match), 2);
+  const r = g.applyFeed(s, { corners: 2, status: 'FT' }, 9000);
+  assert.equal(r.corners, 3);
+});
+
+test('undo takes back a called corner before a correction', () => {
+  const { s, ids: [a, b] } = setup(['Ann', 'Ben']);
+  g.startMatch(s, { fixtureId: '1', stakes: { [a]: 10, [b]: 10 } }, noShuffle, 0);
+  g.callCorner(s, a, 1000);
+  g.manualCorner(s, -1, 2000);
+  assert.equal(s.match.ahead, 0);
+  assert.equal(s.match.manualAdjust, 0);
+});

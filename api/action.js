@@ -9,6 +9,7 @@ const ACTIONS = {
   removePlayer: (s, b) => game.removePlayer(s, b.id),
   startMatch: (s, b) => game.startMatch(s, b),
   corner: (s, b) => game.manualCorner(s, b.delta),
+  callCorner: (s, b) => game.callCorner(s, b.me),
   settle: (s) => game.settle(s),
   abandon: (s) => game.abandon(s),
   newSeason: (s, b) => game.newSeason(s, b.startTokens),

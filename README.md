@@ -72,6 +72,13 @@ The number shows once it's been taken. If the match never gets that many corners
 
 ### During the match
 
+- Anyone can tap **Corner!** the moment the ball goes out, so the flag moves with the TV rather than
+  a minute later with the feed. Taps within 8 seconds of each other count once, so a room shouting the
+  same corner doesn't move it twice. When the feed catches up it confirms the corner rather than adding
+  it again. At full time the feed's count wins, so a corner called by mistake that the feed never saw is dropped.
+- When the flag changes hands, every phone flashes the new holder's name full screen and buzzes
+  (on phones that allow it). Landing on you gets the loudest version.
+- At full time every phone shows who won, the tokens, any golden corner or side pot, and the top of the table.
 - The match log lists every corner with its minute, whose corner it was, and who the flag went to.
   A corner the feed takes back gets its own line.
 - Tap a reaction (😱 🍺 🔥 😂 👏 😤) to let everyone else watching see it.
@@ -92,6 +99,7 @@ Optional, alongside the flag game, and open to players who sit the flag game out
   under the free plan's 100 requests a day. Set `POLL_SECONDS` lower on a paid plan.
 - The flag holder is worked out from the total, so corrections in the feed fix themselves.
 - If the feed is wrong or stuck, the backup controls let you add or remove a corner, end the match, or abandon it.
+  A corner added there is a correction that stays at full time; removing one takes back a called corner first.
 - Each group's state (players, tokens, the live match, results) is kept in Upstash Redis, one key per group.
 
 ## Set it up (free)
