@@ -38,6 +38,17 @@
   .flag path { fill: var(--accent); }
   .flag.wave { animation: wave .6s ease-in-out 2; transform-origin: 20px 116px; }
   @keyframes wave { 50% { transform: rotate(-8deg); } }
+  button.callcorner { width: 100%; min-height: 64px; margin-top: 14px; font: 800 28px 'Barlow Condensed', sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+  button.callcorner:active { transform: scale(.97); }
+  /* Full-screen moments: the flag changing hands, and full time. */
+  .moment { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; background: rgba(8, 24, 15, .94); }
+  .moment .huge { font: 800 clamp(56px, 20vw, 96px)/0.95 'Barlow Condensed', sans-serif; color: var(--accent); text-transform: uppercase; word-break: break-word; }
+  .moment .small { font-size: 18px; color: var(--soft); }
+  #flash { pointer-events: none; animation: flash 1.8s ease forwards; }
+  #flash.mine { background: rgba(255, 210, 63, .96); }
+  #flash.mine .huge, #flash.mine .small { color: var(--bg); }
+  @keyframes flash { 0% { opacity: 0; transform: scale(1.06); } 12% { opacity: 1; transform: none; } 75% { opacity: 1; } 100% { opacity: 0; } }
+  #winner li { justify-content: center; }
   .note { font-size: 13px; color: var(--muted); text-align: center; }
   ol, ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
   li { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border-radius: 10px; background: var(--panel); }
@@ -232,6 +243,8 @@
       <div class="note" id="feedNote"></div>
       <div class="note" id="matchComp"></div>
       <div class="note gold hidden" id="goldenNote"></div>
+      <button class="big callcorner hidden" id="callCorner">Corner!</button>
+      <div class="note hidden" id="callNote">Tap the moment the ball goes out. The live feed checks it.</div>
       <div class="row hidden" id="manualControls" style="width:100%;margin-top:8px">
         <button class="big" data-act="corner" data-delta="1" style="flex:1">+1 Corner</button>
         <button class="ghost" data-act="corner" data-delta="-1" aria-label="Undo last corner">Undo</button>
@@ -365,6 +378,14 @@
   </nav>
   </div>
 
+  <div class="moment hidden" id="flash" aria-live="polite"><div class="small" id="flashTop"></div><div class="huge" id="flashWho"></div><div class="small" id="flashSub"></div></div>
+  <div class="moment hidden" id="winner" role="dialog" aria-labelledby="winnerWho">
+    <div class="small">Full time · <span id="winnerMatch"></span></div>
+    <div class="huge" id="winnerWho"></div>
+    <div class="small" id="winnerWins"></div>
+    <ul id="winnerExtras" style="width:100%;max-width:360px;margin:8px 0"></ul>
+    <button class="big" id="winnerClose" style="width:100%;max-width:360px">Play again</button>
+  </div>
   <div class="err" id="err"></div>
   <a class="coffee hidden" id="coffee" target="_blank" rel="noopener">Enjoying Corners? Buy me a coffee ☕</a>
 </main>
@@ -663,6 +684,43 @@ function renderComps() {
   $('compDates').classList.toggle('hidden', $('compKind').value !== 'tournament');
 }
 
+// The flag changing hands: a full-screen flash everyone in the room can see, louder when it lands on you.
+let flashTimer = null;
+function flagMoment(m) {
+  const mine = m.holder === me;
+  const last = (m.log || []).at(-1);
+  $('flashTop').textContent = last?.back ? 'Corner taken back' : `Corner ${m.corners}${last?.team ? ` · ${last.team}` : ''}`;
+  $('flashWho').textContent = mine ? 'Your flag!' : name(m.holder);
+  $('flashSub').textContent = mine ? `Hold it till full time for ${m.pot} tokens` : 'has the flag';
+  $('flash').classList.toggle('mine', mine);
+  $('flash').classList.remove('hidden');
+  $('flash').style.animation = 'none'; void $('flash').offsetWidth; $('flash').style.animation = '';
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => $('flash').classList.add('hidden'), 1800);
+  try { navigator.vibrate?.(mine ? [120, 60, 120, 60, 240] : 60); } catch {}
+}
+
+// Full time: who won and what, shown once on each phone for a recent result.
+const RESULT_SHOW_MS = 30 * 60 * 1000;
+function showResult() {
+  const last = state.competitions.flatMap((c) => c.history.map((h) => ({ ...h, comp: c }))).sort((a, b) => b.at - a.at)[0];
+  const key = 'corners-seen-result:' + groupId;
+  if (!last || last.abandoned || Date.now() - last.at > RESULT_SHOW_MS || Number(stored(key)) >= last.at) return;
+  store(key, String(last.at));
+  const mine = last.winner === me;
+  $('winnerMatch').textContent = `${last.label} · ${last.corners} corner${last.corners === 1 ? '' : 's'}`;
+  $('winnerWho').textContent = mine ? 'You win!' : `${name(last.winner)} wins`;
+  const won = last.pot - (last.golden?.winner ? last.golden.bonus : 0);
+  $('winnerWins').textContent = `${won} tokens${worth(won) ? ` · worth ${worth(won)}` : ''}`;
+  const extras = [];
+  if (last.golden?.winner) extras.push(`★ Golden corner ${last.golden.corner}: ${name(last.golden.winner)} +${last.golden.bonus}`);
+  if (last.sidePot) extras.push(`Side pot ${last.sidePot}: ${last.guessWinners.map(name).join(' and ')}`);
+  extras.push(`Table: ${(last.comp.table || []).slice(0, 3).map((r, i) => `${i + 1}. ${name(r.id)} ${r.tokens}`).join(' · ')}`);
+  $('winnerExtras').innerHTML = extras.map((t) => `<li class="plain"><span>${esc(t)}</span></li>`).join('');
+  $('winner').classList.remove('hidden');
+  try { navigator.vibrate?.(mine ? [200, 80, 200, 80, 400] : 120); } catch {}
+}
+
 function render() {
   if (!renderGroups()) return;
   const m = state.match;
@@ -670,16 +728,20 @@ function render() {
   if (state.tipUrl) $('coffee').href = state.tipUrl;
   $('live').classList.toggle('hidden', !m);
   if (m && !wasLive) showTab('play'); // a match kicking off brings everyone to it
+  if (!m && me && state.players[me]) showResult();
   wasLive = !!m;
   document.querySelector('#tabs [data-show="play"]').textContent = m ? '● Live' : 'Play';
 
   $('livePill').classList.toggle('hidden', !m || Date.now() < m.kickoff);
   $('livePill').textContent = m?.fixtureId === 'manual' ? 'TEST' : 'LIVE';
   if (m) {
-    if (lastHolder && lastHolder !== m.holder) {
+    // Only a change within the same match counts: not opening the page, or switching group.
+    const thisMatch = `${groupId}|${m.startedAt}`;
+    if (lastHolder && lastHolder.match === thisMatch && lastHolder.id !== m.holder) {
       $('flag').classList.remove('wave'); void $('flag').getBoundingClientRect(); $('flag').classList.add('wave');
+      flagMoment(m);
     }
-    lastHolder = m.holder;
+    lastHolder = { match: thisMatch, id: m.holder };
     const nextId = m.order[(m.order.indexOf(m.holder) + 1) % m.order.length];
     $('holder').textContent = name(m.holder);
     $('next').innerHTML = `Next corner passes it to <b>${esc(name(nextId))}</b>`;
@@ -689,11 +751,16 @@ function render() {
     const before = Date.now() < m.kickoff;
     const manual = m.fixtureId === 'manual';
     $('manualControls').classList.toggle('hidden', !manual);
+    $('callCorner').classList.toggle('hidden', manual || before);
+    $('callNote').classList.toggle('hidden', manual || before);
+    const caller = m.lastCall && Date.now() - m.lastCall.at < 30000 && m.lastCall.by;
+    $('callNote').textContent = caller ? `${caller === me ? 'You' : name(caller)} called the last corner. The live feed checks it.`
+      : 'Tap the moment the ball goes out. The live feed checks it.';
     $('backup').classList.toggle('hidden', manual);
     $('feedNote').innerHTML = manual ? 'Test match · tap +1 Corner each time one is awarded' : m.feedError
       ? `<span class="warn">Live feed problem: ${esc(m.feedError)}</span>`
       : before ? `Kicks off ${new Date(m.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      : `Live feed updates every ${state.pollSeconds}s` + (m.manualAdjust ? ` · ${m.manualAdjust > 0 ? '+' : ''}${m.manualAdjust} by hand` : '');
+      : `Live feed checks every ${state.pollSeconds}s` + (m.ahead ? ` · ${m.ahead} called, waiting for the feed` : '') + (m.manualAdjust ? ` · ${m.manualAdjust > 0 ? '+' : ''}${m.manualAdjust} by hand` : '');
     const guessed = Object.entries(m.guesses).sort((a, b) => a[1].guess - b[1].guess);
     $('sideCard').classList.toggle('hidden', !guessed.length);
     $('sideTitle').textContent = `Side pot · ${m.sidePot} tokens · closest takes it`;
@@ -720,7 +787,8 @@ function render() {
     $('matchLog').innerHTML = log.map((e) => {
       const when = e.minute ? `${esc(e.minute)} · ` : '';
       const gold = gd && !gd.secret && !e.back && e.n === gd.corner ? ' <span class="gold">★ golden</span>' : '';
-      const how = e.byHand && m.fixtureId !== 'manual' ? ' <span class="meta">(by hand)</span>' : '';
+      const how = e.by ? ` <span class="meta">(called by ${esc(e.by === me ? 'you' : name(e.by))})</span>`
+        : e.byHand && m.fixtureId !== 'manual' ? ' <span class="meta">(by hand)</span>' : '';
       return e.back
         ? `<li><span>${when}Corner taken back${how}</span><span class="meta">flag back to ${esc(name(e.holder))}</span></li>`
         : `<li><span>${when}Corner ${e.n}${e.team ? ` · ${esc(e.team)}` : ''}${gold}${how}</span><span class="meta">flag to ${esc(name(e.holder))}</span></li>`;
@@ -976,6 +1044,9 @@ $('fixtureList').onclick = (e) => {
 };
 $('date').onchange = loadFixtures;
 $('testMatch').onclick = () => { picked = TEST_MATCH; $('otherDay').open = false; renderFixtures(); };
+
+$('callCorner').onclick = () => act('callCorner');
+$('winnerClose').onclick = () => { $('winner').classList.add('hidden'); showTab('play'); scrollTo({ top: 0 }); };
 
 $('start').onclick = () => {
   if (!picked) return;
