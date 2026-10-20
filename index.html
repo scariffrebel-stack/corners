@@ -84,6 +84,11 @@
   ol.steps li b { color: var(--text); }
   ol.steps li::before { counter-increment: step; content: counter(step); position: absolute; left: 12px; top: 10px; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--bg); font: 700 14px/22px 'Barlow Condensed', sans-serif; text-align: center; }
   .tip { font-size: 13px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; margin: 10px 0 0; }
+  .group-name { font: 700 26px 'Barlow Condensed', sans-serif; color: var(--text); margin: 0 0 6px; }
+  .group-block { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+  #groups details summary { color: var(--soft); justify-content: space-between; }
+  #groups details summary::after { content: '+'; font-size: 22px; color: var(--muted); }
+  #groups details[open] summary::after { content: '−'; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
@@ -113,11 +118,18 @@
   </section>
 
   <section id="groups" class="card hidden">
-    <div id="groupSettings" class="hidden" style="margin-bottom:18px">
-      <h2 id="settingsTitle">This group</h2>
-      <p style="margin:0">Join code <span class="code" id="groupCode"></span></p>
-      <p class="meta" style="margin:4px 0 10px">Friends can type this under Join a group, or use the Invite link.</p>
-      <div id="alertsBox" class="hidden" style="margin-bottom:14px">
+    <div id="groupSettings" class="hidden">
+      <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:6px">
+        <h2 style="margin:0">Your group</h2>
+        <button class="ghost small" id="groupsClose">Done</button>
+      </div>
+      <p class="group-name" id="settingsTitle">This group</p>
+      <div class="row" style="align-items:center;margin-bottom:4px">
+        <p style="margin:0;flex:1">Join code <span class="code" id="groupCode"></span></p>
+        <button class="small" id="groupInvite">Send invite</button>
+      </div>
+      <p class="meta" style="margin:0 0 16px">Friends tap your invite link, or type this code.</p>
+      <div id="alertsBox" class="hidden" style="margin-bottom:16px">
         <h2>Alerts on this phone</h2>
         <p class="meta" style="margin-top:0" id="alertsNote">Get a buzz when someone puts a stake down or a match kicks off. Nothing is sent between 11pm and 8am.</p>
         <button id="alertsBtn" class="ghost small">Turn on alerts</button>
@@ -139,27 +151,33 @@
         <button id="labelClear" class="ghost small hidden">Clear</button>
       </div>
     </div>
-    <div id="groupsMine">
-      <h2>Your groups</h2>
+    <div id="groupsMine" class="group-block">
+      <h2>Switch group</h2>
       <ul id="groupList"></ul>
     </div>
-    <h2 style="margin-top:18px">Start a group</h2>
-    <p class="meta" style="margin-top:0">For your mates, your family or the regulars at the pub. You get a link to send them.</p>
-    <div class="row">
-      <input id="newGroupName" placeholder="Group name" maxlength="40">
+    <div id="groupsMore" class="group-block">
+      <h2 id="moreTitle">Other groups</h2>
+      <details id="newGroupBox">
+        <summary>Start a new group</summary>
+        <p class="meta" style="margin-top:0">For your mates, your family or the regulars at the pub. You get a link to send them.</p>
+        <div class="row">
+          <input id="newGroupName" placeholder="Group name" maxlength="40">
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input id="newGroupMe" placeholder="Your name" maxlength="30" autocomplete="given-name">
+          <input id="newGroupTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens (100)" aria-label="Starting tokens each">
+        </div>
+        <div class="row" style="margin-top:8px"><button class="big" id="createGroup">Start group</button></div>
+      </details>
+      <details id="joinGroupBox">
+        <summary>Join a group with a code</summary>
+        <div class="row">
+          <input id="joinCode" placeholder="6-letter code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
+          <button id="joinCodeBtn">Join</button>
+        </div>
+      </details>
+      <p class="tip">Tip: add Corners to your home screen (Share, then Add to Home Screen) so this phone remembers your groups. If you opened the link inside WhatsApp, open it in Safari or Chrome first.</p>
     </div>
-    <div class="row" style="margin-top:8px">
-      <input id="newGroupMe" placeholder="Your name" maxlength="30" autocomplete="given-name">
-      <input id="newGroupTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens (100)" aria-label="Starting tokens each">
-    </div>
-    <div class="row" style="margin-top:8px"><button class="big" id="createGroup">Start group</button></div>
-    <h2 style="margin-top:18px">Join a group</h2>
-    <div class="row">
-      <input id="joinCode" placeholder="6-letter code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
-      <button id="joinCodeBtn">Join</button>
-    </div>
-    <p class="tip">Tip: add Corners to your home screen (Share, then Add to Home Screen) so this phone remembers your groups. If you opened the link inside WhatsApp, open it in Safari or Chrome first.</p>
-    <button class="ghost small hidden" id="groupsClose" style="margin-top:12px">Back to the game</button>
   </section>
 
   <div id="game" class="hidden">
@@ -512,6 +530,7 @@ async function groupCall(type, extra, pinNeeded = false) {
   state = body;
   if (body.result) setMe(body.result);
   showGroups = false;
+  $('newGroupBox').open = $('joinGroupBox').open = false;
   render();
   return body;
 }
@@ -554,11 +573,17 @@ function renderGroups() {
   $('howto').classList.toggle('hidden', !showHowto);
   const open = showGroups || !groupId;
   $('groups').classList.toggle('hidden', !open);
-  $('groupsMine').classList.toggle('hidden', !groups.length);
-  $('groupsClose').classList.toggle('hidden', !groupId);
-  $('groupList').innerHTML = groups.map((g) =>
-    `<li class="group${g.id === groupId ? ' current' : ''}" data-group="${esc(g.id)}"><span>${esc(g.name)}</span><span class="meta">${g.id === groupId ? 'open' : 'switch'}</span></li>`).join('');
+  // Only the other groups are listed: the open one is the "Your group" block above.
+  const others = groups.filter((g) => g.id !== groupId);
+  $('groupsMine').classList.toggle('hidden', !others.length);
+  $('groupList').innerHTML = others.map((g) =>
+    `<li class="group" data-group="${esc(g.id)}"><span>${esc(g.name)}</span><span class="meta">switch</span></li>`).join('');
   $('groupSettings').classList.toggle('hidden', !state);
+  // With no group yet, starting or joining one is the whole point, so both stay open and need no divider.
+  $('groupsMore').classList.toggle('group-block', !!state);
+  $('moreTitle').textContent = state ? 'Other groups' : 'Get started';
+  $('newGroupBox').open ||= !state;
+  $('joinGroupBox').open ||= !state;
   if (state) renderAlerts();
   if (state) {
     $('settingsTitle').textContent = state.group.name;
@@ -782,6 +807,7 @@ $('joinCodeBtn').onclick = () => {
 };
 $('joinCode').onkeydown = (e) => { if (e.key === 'Enter') $('joinCodeBtn').click(); };
 
+$('groupInvite').onclick = () => $('invite').click();
 $('invite').onclick = async () => {
   const url = `${location.origin}/?join=${state.group.code}`;
   const text = `Join ${state.group.name} on Corners: whoever holds the flag at full time wins the pot. Code ${state.group.code}.`;
