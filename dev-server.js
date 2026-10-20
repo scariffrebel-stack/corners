@@ -6,6 +6,7 @@ const routes = {
   '/api/state': (await import('./api/state.js')).default,
   '/api/action': (await import('./api/action.js')).default,
   '/api/fixtures': (await import('./api/fixtures.js')).default,
+  '/api/group': (await import('./api/group.js')).default,
 };
 
 const port = Number(process.env.PORT) || 3000;

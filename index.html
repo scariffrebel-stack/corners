@@ -60,6 +60,10 @@
   details summary { cursor: pointer; color: var(--muted); min-height: 44px; display: flex; align-items: center; }
   input.guess { width: 96px; flex: none; text-align: center; }
   .ladder li .tok { font: 700 18px 'Barlow Condensed', sans-serif; }
+  .groupname { display: block; max-width: 100%; margin: 12px 20px 0; min-height: 36px; padding: 4px 12px; font-size: 14px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  li.group { cursor: pointer; }
+  li.group.current { outline: 2px solid var(--accent); }
+  .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
 <body>
@@ -71,7 +75,32 @@
       <button class="ghost small" id="invite">Invite</button>
     </div>
   </header>
+  <button class="ghost groupname hidden" id="groupBtn"></button>
 
+  <section id="groups" class="card hidden">
+    <div id="groupsMine">
+      <h2>Your groups</h2>
+      <ul id="groupList"></ul>
+    </div>
+    <h2 style="margin-top:18px">Start a group</h2>
+    <p class="meta" style="margin-top:0">For your mates, your family or the regulars at the pub. You get a link to send them.</p>
+    <div class="row">
+      <input id="newGroupName" placeholder="Group name" maxlength="40">
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input id="newGroupMe" placeholder="Your name" maxlength="30" autocomplete="given-name">
+      <input id="newGroupTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens (100)" aria-label="Starting tokens each">
+    </div>
+    <div class="row" style="margin-top:8px"><button class="big" id="createGroup">Start group</button></div>
+    <h2 style="margin-top:18px">Join a group</h2>
+    <div class="row">
+      <input id="joinCode" placeholder="6-letter code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
+      <button id="joinCodeBtn">Join</button>
+    </div>
+    <button class="ghost small hidden" id="groupsClose" style="margin-top:12px">Back to the game</button>
+  </section>
+
+  <div id="game" class="hidden">
   <section id="join" class="card hidden">
     <h2>Who are you?</h2>
     <p class="meta" style="margin-top:0">Pick your name so this phone knows it's you.</p>
@@ -161,6 +190,7 @@
       <span class="meta" id="startTokensNote" style="align-self:center"></span>
     </div>
   </section>
+  </div>
 
   <div class="err" id="err"></div>
 </main>
@@ -170,8 +200,40 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const name = (id) => state.players[id]?.name || 'Someone';
 
-function pin() {
-  if (!state?.pinRequired) return undefined;
+function stored(key) { try { return localStorage.getItem(key); } catch { return null; } }
+function store(key, value) { try { value == null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch {} }
+
+// The groups this phone has joined, and which one is open. Who you are is remembered per group.
+let groups = [];
+try { groups = JSON.parse(stored('corners-groups')) || []; } catch {}
+let groupId = stored('corners-group');
+// Phones from before groups existed belong to the original group.
+const legacyMe = stored('corners-me');
+if (legacyMe && !stored('corners-me:main')) {
+  store('corners-me:main', legacyMe);
+  if (!groups.some((g) => g.id === 'main')) groups.push({ id: 'main', name: 'Corners' });
+  if (!groupId) groupId = 'main';
+}
+function rememberGroup(g) {
+  const i = groups.findIndex((x) => x.id === g.id);
+  if (i >= 0) groups[i] = { id: g.id, name: g.name }; else groups.push({ id: g.id, name: g.name });
+  store('corners-groups', JSON.stringify(groups));
+}
+function forgetGroup(id) {
+  groups = groups.filter((g) => g.id !== id);
+  store('corners-groups', JSON.stringify(groups));
+  if (groupId === id) openGroup(null);
+}
+function openGroup(id) {
+  groupId = id;
+  store('corners-group', id);
+  me = id ? stored('corners-me:' + id) : null;
+  state = null;
+  lastHolder = null;
+}
+
+function pin(needed = state?.pinRequired) {
+  if (!needed) return undefined;
   let p = null;
   try { p = localStorage.getItem('corners-pin'); } catch {}
   if (!p) {
@@ -183,11 +245,13 @@ function pin() {
 
 async function act(type, extra = {}) {
   $('err').textContent = '';
-  const r = await fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, pin: pin(), me, ...extra }) });
+  const r = await fetch('/api/action', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, pin: pin(), g: groupId, me, ...extra }) });
   const body = await r.json();
   if (!r.ok) {
-    if (r.status === 403) try { localStorage.removeItem('corners-pin'); } catch {}
+    if (r.status === 403) store('corners-pin', null);
+    if (r.status === 404) forgetGroup(groupId);
     $('err').textContent = body.error || 'Something went wrong';
+    render();
     return;
   }
   state = body;
@@ -195,12 +259,39 @@ async function act(type, extra = {}) {
   return body;
 }
 
+// Group setup calls: creating a group, or looking one up by its join code.
+async function groupCall(type, extra, pinNeeded = false) {
+  $('err').textContent = '';
+  const r = await fetch('/api/group', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, pin: pin(pinNeeded), ...extra }) });
+  const body = await r.json();
+  if (!r.ok) {
+    if (r.status === 403) {
+      store('corners-pin', null);
+      if (!pinNeeded) return groupCall(type, extra, true); // ask for the PIN, then try once more
+    }
+    $('err').textContent = body.error || 'Something went wrong';
+    return null;
+  }
+  rememberGroup(body.group);
+  openGroup(body.group.id);
+  if (body.result) setMe(body.result);
+  state = body;
+  showGroups = false;
+  render();
+  return body;
+}
+
 async function refresh() {
+  if (!groupId) return render();
+  const asked = groupId;
   try {
-    const r = await fetch('/api/state' + (me ? '?me=' + encodeURIComponent(me) : ''));
+    const r = await fetch('/api/state?g=' + encodeURIComponent(groupId) + (me ? '&me=' + encodeURIComponent(me) : ''));
     const body = await r.json();
+    if (asked !== groupId) return; // switched group while this was loading
+    if (r.status === 404) { forgetGroup(asked); $('err').textContent = body.error; return render(); }
     if (!r.ok) throw new Error(body.error);
     state = body;
+    rememberGroup(body.group);
     render();
   } catch (e) {
     $('err').textContent = 'Can’t reach the game: ' + e.message;
@@ -208,11 +299,11 @@ async function refresh() {
 }
 
 let lastHolder = null;
-let me = null;
-try { me = localStorage.getItem('corners-me'); } catch {}
+let showGroups = false;
+let me = groupId ? stored('corners-me:' + groupId) : null;
 function setMe(id) {
   me = id;
-  try { localStorage.setItem('corners-me', id); } catch {}
+  store('corners-me:' + groupId, id);
 }
 // "Arsenal v Chelsea" -> "ARS v CHE" so it fits the scoreboard
 function shortLabel(label) {
@@ -220,7 +311,22 @@ function shortLabel(label) {
   return parts.length === 2 ? parts.map((t) => t.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase()).join(' v ') : label;
 }
 
+function renderGroups() {
+  const open = showGroups || !groupId;
+  $('groups').classList.toggle('hidden', !open);
+  $('groupsMine').classList.toggle('hidden', !groups.length);
+  $('groupsClose').classList.toggle('hidden', !groupId);
+  $('groupList').innerHTML = groups.map((g) =>
+    `<li class="group${g.id === groupId ? ' current' : ''}" data-group="${esc(g.id)}"><span>${esc(g.name)}</span><span class="meta">${g.id === groupId ? 'open' : 'switch'}</span></li>`).join('');
+  $('groupBtn').classList.toggle('hidden', !state);
+  if (state) $('groupBtn').textContent = `${state.group.name} ▾`;
+  $('game').classList.toggle('hidden', open || !state);
+  $('invite').classList.toggle('hidden', !state);
+  return !open && state;
+}
+
 function render() {
+  if (!renderGroups()) return;
   const m = state.match;
   $('live').classList.toggle('hidden', !m);
   $('setup').classList.toggle('hidden', !!m);
@@ -298,6 +404,14 @@ function render() {
 }
 
 document.addEventListener('click', (e) => {
+  const g = e.target.closest('li[data-group]');
+  if (g) {
+    if (g.dataset.group !== groupId) openGroup(g.dataset.group);
+    showGroups = false;
+    render();
+    refresh();
+    return;
+  }
   const b = e.target.closest('button');
   if (!b) return;
   if (b.dataset.me) {
@@ -321,14 +435,24 @@ $('joinBtn').onclick = async () => {
 };
 $('joinName').onkeydown = (e) => { if (e.key === 'Enter') $('joinBtn').click(); };
 
+$('groupBtn').onclick = () => { showGroups = !showGroups; render(); };
+$('groupsClose').onclick = () => { showGroups = false; render(); };
+$('createGroup').onclick = () => groupCall('create', {
+  name: $('newGroupName').value, player: $('newGroupMe').value, startTokens: $('newGroupTokens').value,
+}).then((ok) => { if (ok) ['newGroupName', 'newGroupMe', 'newGroupTokens'].forEach((id) => { $(id).value = ''; }); });
+$('joinCodeBtn').onclick = () => {
+  if ($('joinCode').value.trim()) groupCall('join', { code: $('joinCode').value }).then((ok) => { if (ok) $('joinCode').value = ''; });
+};
+$('joinCode').onkeydown = (e) => { if (e.key === 'Enter') $('joinCodeBtn').click(); };
+
 $('invite').onclick = async () => {
-  const url = location.origin + '/';
-  const text = 'Join our Corners game: whoever holds the flag at full time wins the pot.';
+  const url = `${location.origin}/?join=${state.group.code}`;
+  const text = `Join ${state.group.name} on Corners: whoever holds the flag at full time wins the pot. Code ${state.group.code}.`;
   try {
     if (navigator.share) return await navigator.share({ title: 'Corners', text, url });
   } catch (e) { if (e.name === 'AbortError') return; }
-  try { await navigator.clipboard.writeText(url); $('invite').textContent = 'Link copied'; }
-  catch { prompt('Copy this link and send it to your friends', url); }
+  try { await navigator.clipboard.writeText(url); $('invite').textContent = `Link copied · ${state.group.code}`; }
+  catch { prompt(`Copy this link and send it to your friends, or give them the code ${state.group.code}`, url); }
   setTimeout(() => { $('invite').textContent = 'Invite'; }, 2500);
 };
 
@@ -373,7 +497,14 @@ $('start').onclick = () => {
   act('startMatch', { fixtureId: opt?.value, label: opt?.dataset.label, kickoff: opt?.dataset.kickoff });
 };
 
-refresh();
+// A join link (/?join=CODE) opens that group on this phone.
+const joinParam = new URLSearchParams(location.search).get('join');
+if (joinParam) {
+  history.replaceState(null, '', location.pathname);
+  groupCall('join', { code: joinParam });
+} else {
+  refresh();
+}
 setInterval(refresh, 10000);
 </script>
 </body>

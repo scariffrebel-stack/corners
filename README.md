@@ -4,6 +4,16 @@ A game for friends watching the Premier League. Each player stakes their own tok
 random player starts with the Corner flag, and the flag passes along the order every
 time either team gets a corner. Whoever holds it at full time takes the whole pot.
 
+## Groups
+
+Anyone can start their own group from the home screen: give it a name, your name, and how many
+tokens everyone starts with. Each group has its own players, tokens, matches and results.
+Tap **Invite** to send a join link, or read out the 6-letter code shown with it. The same phone
+can be in several groups, and the group name under the logo switches between them.
+
+The game that was running before groups existed carries on as the group called "Corners", with
+its players and tokens kept. Phones that had already picked a name open straight into it.
+
 ## Rules
 
 1. Everyone starts the season with the same tokens (100 unless you pick another amount under New season). Most tokens at the end of the season wins.
@@ -30,7 +40,7 @@ Optional, alongside the flag game, and open to players who sit the flag game out
   under the free plan's 100 requests a day. Set `POLL_SECONDS` lower on a paid plan.
 - The flag holder is worked out from the total, so corrections in the feed fix themselves.
 - If the feed is wrong or stuck, the backup controls let you add or remove a corner, end the match, or abandon it.
-- State (players, tokens, the live match, results) is kept in Upstash Redis.
+- Each group's state (players, tokens, the live match, results) is kept in Upstash Redis, one key per group.
 
 ## Set it up (free)
 
@@ -41,7 +51,7 @@ Optional, alongside the flag game, and open to players who sit the flag game out
    This adds the `KV_REST_API_URL` and `KV_REST_API_TOKEN` settings.
 4. In **Settings → Environment Variables**, add:
    - `API_FOOTBALL_KEY`: your key from step 1
-   - `GAME_PIN` (optional): a PIN friends need before they can change anything
+   - `GAME_PIN` (optional): a PIN needed before anyone can start a group or change anything
 5. Redeploy, and share the link with your friends.
 
 ## Try it locally

@@ -1,4 +1,5 @@
-import { load, save } from '../lib/store.js';
+import { load, save, NoGroupError } from '../lib/store.js';
+import { GameError } from '../lib/game.js';
 import { applyFeed, holderId, pot, cornerCount, sidePot, closestIds } from '../lib/game.js';
 import { cornersFor } from '../lib/feed.js';
 
@@ -6,8 +7,8 @@ import { cornersFor } from '../lib/feed.js';
 const POLL_MS = (Number(process.env.POLL_SECONDS) || 80) * 1000;
 
 // Called whenever anyone has the page open: checks the feed at most once per POLL_MS.
-export async function loadAndPoll(now = Date.now()) {
-  const state = await load();
+export async function loadAndPoll(groupId, now = Date.now()) {
+  const state = await load(groupId);
   const m = state.match;
   let feedError = null;
   if (m && m.fixtureId !== 'manual' && now >= m.kickoff && now - m.lastPolled >= POLL_MS) {
@@ -37,6 +38,7 @@ function hiddenGuesses(state, me) {
 export function view(state, me) {
   const m = state.match;
   return {
+    group: { id: state.group.id, name: state.group.name, code: state.group.code },
     players: state.players,
     pendingStakes: state.pendingStakes || {},
     pendingGuesses: hiddenGuesses(state, me),
@@ -54,6 +56,11 @@ export function view(state, me) {
       closest: closestIds(m),
     },
   };
+}
+
+export function sendError(res, e) {
+  const status = e instanceof NoGroupError ? 404 : e instanceof GameError ? 400 : 500;
+  send(res, status, { error: e.message });
 }
 
 export function send(res, status, body) {
