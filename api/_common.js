@@ -1,6 +1,6 @@
 import { load, save, NoGroupError } from '../lib/store.js';
 import { GameError } from '../lib/game.js';
-import { applyFeed, holderId, pot, cornerCount, sidePot, closestIds } from '../lib/game.js';
+import { applyFeed, holderId, pot, cornerCount, sidePot, closestIds, closeFinished, standings } from '../lib/game.js';
 import { cornersFor } from '../lib/feed.js';
 
 // 80s keeps one ~2 hour match under API-Football's free 100 requests a day.
@@ -9,6 +9,9 @@ const POLL_MS = (Number(process.env.POLL_SECONDS) || 80) * 1000;
 // Called whenever anyone has the page open: checks the feed at most once per POLL_MS.
 export async function loadAndPoll(groupId, now = Date.now()) {
   const state = await load(groupId);
+  const open = Object.values(state.competitions).filter((c) => c.status === 'open').length;
+  closeFinished(state, now);
+  if (Object.values(state.competitions).filter((c) => c.status === 'open').length !== open) await save(state);
   const m = state.match;
   let feedError = null;
   if (m && m.fixtureId !== 'manual' && now >= m.kickoff && now - m.lastPolled >= POLL_MS) {
@@ -42,8 +45,11 @@ export function view(state, me) {
     players: state.players,
     pendingStakes: state.pendingStakes || {},
     pendingGuesses: hiddenGuesses(state, me),
-    history: state.history,
     startTokens: state.startTokens,
+    nextComp: state.nextComp,
+    competitions: Object.values(state.competitions)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map(({ balances, ...c }) => ({ ...c, table: standings(state, c.id) })),
     pinRequired: Boolean(process.env.GAME_PIN),
     pollSeconds: POLL_MS / 1000,
     match: m && {

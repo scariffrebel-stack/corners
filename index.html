@@ -126,6 +126,7 @@
       <div class="who" id="holder"></div>
       <div class="next" id="next"></div>
       <div class="note" id="feedNote"></div>
+      <div class="note" id="matchComp"></div>
       <div class="row hidden" id="manualControls" style="width:100%;margin-top:8px">
         <button class="big" data-act="corner" data-delta="1" style="flex:1">+1 Corner</button>
         <button class="ghost" data-act="corner" data-delta="-1" aria-label="Undo last corner">Undo</button>
@@ -152,6 +153,35 @@
     </section>
   </div>
 
+  <section id="compCard" class="card hidden">
+    <h2>Playing for</h2>
+    <div class="row">
+      <select id="compPick" aria-label="Competition for the next match"></select>
+      <button class="ghost small" id="compEnd">End it</button>
+    </div>
+    <p class="meta" id="compNote" style="margin-bottom:0"></p>
+    <details id="compNew" style="margin-top:8px">
+      <summary>Start a new competition</summary>
+      <div class="row">
+        <select id="compKind" aria-label="Kind of competition">
+          <option value="tournament">Tournament: a set of days, e.g. one weekend</option>
+          <option value="match">One-off match</option>
+          <option value="season">Season: runs until you end it</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <input id="compName" placeholder="Name, e.g. Derby weekend" maxlength="40">
+        <input id="compTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens each" aria-label="Starting tokens each" style="flex:none;width:120px">
+      </div>
+      <div class="row" id="compDates" style="margin-top:8px">
+        <input type="date" id="compFrom" aria-label="First day">
+        <input type="date" id="compTo" aria-label="Last day">
+      </div>
+      <p class="meta" style="margin:8px 0">Every competition has its own tokens, so it never touches the others.</p>
+      <button id="compCreate" style="width:100%">Start it</button>
+    </details>
+  </section>
+
   <section id="setup" class="card hidden">
     <h2>New match</h2>
     <div class="row">
@@ -174,7 +204,9 @@
   </section>
 
   <section class="card">
-    <h2>Season table</h2>
+    <h2 id="tableTitle">Table</h2>
+    <div class="row hidden" id="compViewRow" style="margin-bottom:8px"><select id="compView" aria-label="Show the table for"></select></div>
+    <p class="meta hidden" id="compWinners" style="margin-top:0"></p>
     <ul id="table" class="ladder"></ul>
     <div class="row" style="margin-top:10px">
       <input id="newName" placeholder="Add a player" maxlength="30">
@@ -199,6 +231,16 @@ let state = null;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const name = (id) => state.players[id]?.name || 'Someone';
+const compById = (id) => state.competitions.find((c) => c.id === id);
+const bal = (pid, c = compById(state.nextComp)) => c?.table.find((r) => r.id === pid)?.tokens ?? 0;
+const KIND = { season: 'Season', tournament: 'Tournament', match: 'One-off match' };
+const day = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString([], { day: 'numeric', month: 'short' });
+function compLine(c) {
+  const when = c.kind === 'tournament' ? ` · ${day(c.from)} to ${day(c.to)}` : '';
+  return `${KIND[c.kind]}${when} · everyone starts on ${c.startTokens} tokens`;
+}
+// Which competition's table this phone is looking at. Follows the live or next match unless picked.
+let viewComp = null;
 
 function stored(key) { try { return localStorage.getItem(key); } catch { return null; } }
 function store(key, value) { try { value == null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch {} }
@@ -230,6 +272,7 @@ function openGroup(id) {
   me = id ? stored('corners-me:' + id) : null;
   state = null;
   lastHolder = null;
+  viewComp = null;
 }
 
 function pin(needed = state?.pinRequired) {
@@ -325,11 +368,28 @@ function renderGroups() {
   return !open && state;
 }
 
+function renderComps() {
+  const live = !!state.match;
+  const open = state.competitions.filter((c) => c.status === 'open');
+  const next = compById(state.nextComp);
+  $('compCard').classList.toggle('hidden', live);
+  $('setup').classList.toggle('hidden', live || !next);
+  if (document.activeElement !== $('compPick')) {
+    $('compPick').innerHTML = open.map((c) =>
+      `<option value="${esc(c.id)}"${c.id === state.nextComp ? ' selected' : ''}>${esc(c.name)}</option>`).join('')
+      || '<option value="">Start a competition below</option>';
+  }
+  $('compPick').disabled = open.length < 2;
+  $('compEnd').classList.toggle('hidden', !next);
+  $('compNote').textContent = next ? compLine(next) : 'Nothing is running. Start a season, a tournament or a one-off match.';
+  if (!next) $('compNew').open = true;
+  $('compDates').classList.toggle('hidden', $('compKind').value !== 'tournament');
+}
+
 function render() {
   if (!renderGroups()) return;
   const m = state.match;
   $('live').classList.toggle('hidden', !m);
-  $('setup').classList.toggle('hidden', !!m);
 
   $('livePill').classList.toggle('hidden', !m || Date.now() < m.kickoff);
   $('livePill').textContent = m?.fixtureId === 'manual' ? 'TEST' : 'LIVE';
@@ -359,13 +419,14 @@ function render() {
       const off = g.guess - m.corners;
       return `<li class="${m.closest.includes(id) ? 'holder' : ''}"><span>${esc(name(id))}${id === me ? ' (you)' : ''} · <b>${g.guess}</b></span><span class="meta">${off === 0 ? 'spot on' : `${Math.abs(off)} ${off > 0 ? 'over' : 'under'}`} · ${g.stake} tokens</span></li>`;
     }).join('');
+    $('matchComp').textContent = `For ${compById(m.compId)?.name || 'the competition'}`;
     $('order').innerHTML = m.order.map((id, i) =>
       `<li class="${id === m.holder ? 'holder' : ''}"><span>${i + 1} · ${esc(name(id))}</span><span class="meta">${m.stakes[id]}</span></li>`).join('');
   } else {
     const editing = document.activeElement?.closest?.('#stakes');
     if (!editing) {
       $('stakes').innerHTML = Object.entries(state.players).map(([id, p]) =>
-        `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${p.tokens} tokens</span></span><input class="stake" type="number" min="0" max="${p.tokens}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${state.pendingStakes[id] ?? ''}" placeholder="—"></li>`).join('')
+        `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${bal(id)} tokens</span></span><input class="stake" type="number" min="0" max="${bal(id)}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${state.pendingStakes[id] ?? ''}" placeholder="—"></li>`).join('')
         || '<li class="meta plain">Add players below first.</li>';
     }
     const meKnown = me && state.players[me];
@@ -389,14 +450,24 @@ function render() {
     $('joinNames').innerHTML = Object.entries(state.players).map(([id, p]) =>
       `<button class="ghost" data-me="${id}">I'm ${esc(p.name)}</button>`).join('');
   }
+  renderComps();
+  const v = compById(viewComp) || compById(m?.compId) || compById(state.nextComp) || state.competitions[0];
   $('startTokensNote').textContent = `Everyone starts on ${state.startTokens}`;
-
-  const rows = Object.entries(state.players).sort((a, b) => b[1].tokens - a[1].tokens);
-  $('table').innerHTML = rows.map(([id, p], i) =>
-    `<li><span>${i + 1}. ${esc(p.name)}${id === me ? ' (you)' : ''}</span><span><span class="tok">${p.tokens}</span> <button class="ghost small" data-remove="${id}" title="Remove">✕</button></span></li>`).join('')
+  $('tableTitle').textContent = v ? `${v.name} table` : 'Table';
+  $('compViewRow').classList.toggle('hidden', state.competitions.length < 2);
+  $('compView').innerHTML = state.competitions.map((c) =>
+    `<option value="${esc(c.id)}"${c.id === v?.id ? ' selected' : ''}>${esc(c.name)}${c.status === 'finished' ? ' (finished)' : ''}</option>`).join('');
+  $('compWinners').classList.toggle('hidden', v?.status !== 'finished');
+  if (v?.status === 'finished') {
+    $('compWinners').innerHTML = v.winners.length
+      ? `Finished. Won by <b>${v.winners.map((id) => esc(name(id))).join(' and ')}</b>.` : 'Finished with no matches played.';
+  }
+  const rows = v ? v.table : [];
+  $('table').innerHTML = rows.map(({ id, tokens }, i) =>
+    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}</span><span><span class="tok">${tokens}</span>${v.status === 'open' ? ` <button class="ghost small" data-remove="${id}" title="Remove">✕</button>` : ''}</span></li>`).join('')
     || '<li class="meta plain">No players yet.</li>';
 
-  $('history').innerHTML = state.history.map((h) => h.abandoned
+  $('history').innerHTML = (v?.history || []).map((h) => h.abandoned
     ? `<li><span>${esc(h.label)}</span><span class="meta">abandoned, stakes refunded</span></li>`
     : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corners</span></span><span style="text-align:right">${esc(name(h.winner))} won <b>${h.pot}</b>${h.sidePot
         ? `<br><span class="meta">Side pot ${h.sidePot}: ${h.guessWinners.map((id) => `${esc(name(id))} (${h.guesses[id].guess})`).join(', ')}</span>` : ''}</span></li>`).join('')
@@ -468,9 +539,35 @@ $('guessSave').onclick = () => {
   act('setGuess', { id: me, guess: Number(guess), stake: Number(stake) });
 };
 
+$('compPick').onchange = () => act('setNextComp', { id: $('compPick').value });
+$('compView').onchange = () => { viewComp = $('compView').value; render(); };
+$('compKind').onchange = () => {
+  $('compDates').classList.toggle('hidden', $('compKind').value !== 'tournament');
+  $('compName').placeholder = { tournament: 'Name, e.g. Derby weekend', match: 'Name (optional)', season: 'Name, e.g. 2026/27' }[$('compKind').value];
+};
+$('compCreate').onclick = async () => {
+  const body = await act('createCompetition', {
+    kind: $('compKind').value, name: $('compName').value, startTokens: $('compTokens').value,
+    from: $('compFrom').value, to: $('compTo').value,
+  });
+  if (!body) return;
+  ['compName', 'compTokens'].forEach((id) => { $(id).value = ''; });
+  $('compNew').open = false;
+  viewComp = null;
+  const c = compById(body.nextComp);
+  if (c?.kind === 'tournament') { $('date').value = c.from; }
+  render();
+};
+$('compEnd').onclick = () => {
+  const c = compById(state.nextComp);
+  if (c && confirm(`End ${c.name} now? Its table is final and nobody can play for it again.`)) act('endCompetition', { id: c.id });
+};
+$('compFrom').value = $('compTo').value = new Date().toISOString().slice(0, 10);
+
 $('newSeason').onclick = () => {
-  const v = prompt("New season: everyone's tokens reset and the results clear. Starting tokens for each player?", String(state.startTokens));
+  const v = prompt("New season: the current season ends with its table kept, and everyone starts again. Starting tokens for each player?", String(state.startTokens));
   if (v === null) return;
+  viewComp = null;
   act('newSeason', { startTokens: Number(v) });
 };
 

@@ -14,6 +14,19 @@ can be in several groups, and the group name under the logo switches between the
 The game that was running before groups existed carries on as the group called "Corners", with
 its players and tokens kept. Phones that had already picked a name open straight into it.
 
+## Competitions
+
+Every match is played for a competition, and each competition has its own tokens:
+
+- **Season:** runs until you end it, or until you tap **New season**. Most tokens at the end wins.
+- **Tournament:** a run of days, such as one weekend or a cup run. Only matches on those days count,
+  and it ends by itself after the last day.
+- **One-off match:** a single game with its own tokens, over at full time.
+
+A tournament or one-off match never touches the season's tokens. Pick what the next match is for under
+**Playing for**, and look back at any competition's final table from the table card. A group from
+before competitions carries on as its first season, with every balance and result kept.
+
 ## Rules
 
 1. Everyone starts the season with the same tokens (100 unless you pick another amount under New season). Most tokens at the end of the season wins.

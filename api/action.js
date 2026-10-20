@@ -10,6 +10,9 @@ const ACTIONS = {
   settle: (s) => game.settle(s),
   abandon: (s) => game.abandon(s),
   newSeason: (s, b) => game.newSeason(s, b.startTokens),
+  createCompetition: (s, b) => game.createCompetition(s, b),
+  setNextComp: (s, b) => game.setNextComp(s, b.id),
+  endCompetition: (s, b) => game.endCompetition(s, b.id),
   setStake: (s, b) => game.setStake(s, b.id, b.stake),
   setGuess: (s, b) => game.setGuess(s, b.id, b.guess, b.stake),
 };

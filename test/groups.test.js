@@ -7,7 +7,8 @@ test('a new group starts with its creator as the only player', () => {
   const { state, name, playerId } = g.newGroup(' Five-a-side ', 50, 'Ann');
   assert.equal(name, 'Five-a-side');
   assert.equal(state.startTokens, 50);
-  assert.deepEqual(state.players, { [playerId]: { name: 'Ann', tokens: 50 } });
+  assert.deepEqual(state.players, { [playerId]: { name: 'Ann' } });
+  assert.equal(g.balance(state, playerId), 50);
   assert.throws(() => g.newGroup('', 50, 'Ann'), g.GameError);
   assert.throws(() => g.newGroup('Pub', 0, 'Ann'), g.GameError);
   assert.throws(() => g.newGroup('Pub', 50, ''), g.GameError);
@@ -23,10 +24,10 @@ test('groups keep separate players and tokens, and a code finds the right one', 
   assert.match(a.state.group.code, /^[A-HJKMNP-Z2-9]{6}$/);
 
   const work = await load(a.state.group.id);
-  work.players[a.playerId].tokens = 7;
+  work.competitions[work.nextComp].balances[a.playerId] = 7;
   await save(work);
-  assert.equal((await load(a.state.group.id)).players[a.playerId].tokens, 7);
-  assert.equal((await load(b.state.group.id)).players[b.playerId].tokens, 20);
+  assert.equal(g.balance(await load(a.state.group.id), a.playerId), 7);
+  assert.equal(g.balance(await load(b.state.group.id), b.playerId), 20);
 
   const found = await findGroup(` ${b.state.group.code.toLowerCase()} `);
   assert.equal(found.group.id, b.state.group.id);
@@ -41,4 +42,12 @@ test('the original group is always there and gets a join code of its own', async
   assert.equal(main.group.id, MAIN_GROUP);
   assert.equal((await findGroup(main.group.code)).group.id, MAIN_GROUP);
   assert.equal((await load()).group.code, main.group.code); // the code sticks
+});
+
+test('the original group is moved into a season once, and keeps that season', async () => {
+  await save({ group: { id: MAIN_GROUP, name: 'Corners', code: 'OLDONE' }, startTokens: 100, players: { a: { name: 'Ann', tokens: 140 } }, pendingStakes: {}, pendingGuesses: {}, match: null, history: [] });
+  const first = await load(MAIN_GROUP);
+  const again = await load(MAIN_GROUP);
+  assert.equal(again.nextComp, first.nextComp);
+  assert.equal(g.balance(again, 'a'), 140);
 });
