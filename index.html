@@ -53,6 +53,17 @@
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
   .row > input, .row > select { flex: 1; min-width: 0; }
   input.stake { width: 84px; flex: none; text-align: center; min-height: 40px; }
+  /* Bottom tabs: each section of the game shows only on its own tab. */
+  main.has-tabs { padding-bottom: 88px; }
+  #game[data-on="play"] [data-tab]:not([data-tab="play"]),
+  #game[data-on="table"] [data-tab]:not([data-tab="table"]),
+  #game[data-on="results"] [data-tab]:not([data-tab="results"]) { display: none !important; }
+  .tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); z-index: 5; }
+  .tabs button { flex: 1; max-width: 160px; background: transparent; color: var(--muted); border: 1px solid transparent; font-weight: 600; }
+  .tabs button.on { color: var(--bg); background: var(--accent); }
+  .fixtures { display: grid; gap: 8px; margin: 0 0 8px; }
+  .fixtures li { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .fixtures li.on { outline: 2px solid var(--accent); }
   .err { color: var(--bad); font-size: 14px; margin: 16px 20px 0; }
   .err:empty { display: none; }
   .warn { color: var(--accent); }
@@ -89,9 +100,9 @@
   /* Someone new sees only the welcome until they pick their name, then the game opens up. */
   #game.newcomer > :not(#join) { display: none !important; }
   .group-block { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
-  #groups details summary { color: var(--soft); justify-content: space-between; }
-  #groups details summary::after { content: '+'; font-size: 22px; color: var(--muted); }
-  #groups details[open] summary::after { content: '−'; }
+  #groups details summary, #otherDay summary { color: var(--soft); justify-content: space-between; }
+  #groups details summary::after, #otherDay summary::after { content: '+'; font-size: 22px; color: var(--muted); }
+  #groups details[open] summary::after, #otherDay[open] summary::after { content: '−'; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
@@ -204,7 +215,7 @@
     <p class="tip">Opened this inside WhatsApp? Open it in Safari or Chrome and add it to your home screen, so it remembers you next time.</p>
   </section>
 
-  <div id="live" class="hidden">
+  <div id="live" class="hidden" data-tab="play">
     <section class="scoreboard">
       <div><span>MATCH</span><b id="matchLabel"></b></div>
       <div><span>CORNERS</span><b id="corners">0</b></div>
@@ -255,7 +266,7 @@
     </section>
   </div>
 
-  <section id="compCard" class="card hidden">
+  <section id="compCard" class="card hidden" data-tab="play">
     <h2>Playing for</h2>
     <div class="row">
       <select id="compPick" aria-label="Competition for the next match"></select>
@@ -284,13 +295,18 @@
     </details>
   </section>
 
-  <section id="setup" class="card hidden">
+  <section id="setup" class="card hidden" data-tab="play">
     <h2>New match</h2>
-    <div class="row">
-      <input type="date" id="date">
-      <button class="ghost" id="loadFixtures">Find matches</button>
-    </div>
-    <div class="row" style="margin-top:8px"><select id="fixture"><option value="">Pick a Premier League match</option><option value="manual" data-label="Test match">Test match (tap corners yourself)</option></select></div>
+    <p class="meta" style="margin-top:0" id="fixturesDay">Today's matches</p>
+    <ul id="fixtureList" class="fixtures"></ul>
+    <select id="fixture" class="hidden" aria-hidden="true"></select>
+    <details id="otherDay">
+      <summary>Another day, or a test match</summary>
+      <div class="row">
+        <input type="date" id="date" aria-label="Match day">
+        <button class="ghost small" id="testMatch">Test match</button>
+      </div>
+    </details>
     <p class="meta">Everyone sets their own stake on their phone. Leave it blank to sit this one out.</p>
     <ul id="stakes"></ul>
     <h2 style="margin-top:18px">Side pot · guess the corners</h2>
@@ -306,7 +322,7 @@
     <div class="row" style="margin-top:8px"><button class="big" id="start">Shuffle and start</button></div>
   </section>
 
-  <section class="card">
+  <section class="card" data-tab="table">
     <h2 id="tableTitle">Table</h2>
     <div class="row hidden" id="compViewRow" style="margin-bottom:8px"><select id="compView" aria-label="Show the table for"></select></div>
     <p class="meta hidden" id="compWinners" style="margin-top:0"></p>
@@ -317,7 +333,7 @@
     </div>
   </section>
 
-  <section class="card" id="boardCard">
+  <section class="card" id="boardCard" data-tab="table">
     <h2>Leaderboard</h2>
     <div class="row" style="margin-bottom:8px">
       <select id="boardScope" aria-label="Leaderboard for"><option value="comp">This competition</option><option value="all">All time</option></select>
@@ -333,7 +349,7 @@
     <p class="meta" id="boardTotals" style="margin-bottom:0"></p>
   </section>
 
-  <section class="card">
+  <section class="card" data-tab="results">
     <h2>Results</h2>
     <ul id="history"></ul>
     <div class="row" style="margin-top:10px">
@@ -341,6 +357,12 @@
       <span class="meta" id="startTokensNote" style="align-self:center"></span>
     </div>
   </section>
+
+  <nav class="tabs" id="tabs" aria-label="Sections">
+    <button data-show="play" class="on">Play</button>
+    <button data-show="table">Table</button>
+    <button data-show="results">Results</button>
+  </nav>
   </div>
 
   <div class="err" id="err"></div>
@@ -569,6 +591,7 @@ async function refresh() {
 let showHowto = !stored('corners-howto-seen');
 let joining = false; // opened from an invite link and still fetching that group
 let lastHolder = null;
+let wasLive = false;
 let showGroups = false;
 let me = groupId ? stored('corners-me:' + groupId) : null;
 function setMe(id) {
@@ -616,6 +639,7 @@ function renderGroups() {
     `<button class="${g.id === groupId ? 'on' : ''}" data-switch="${esc(g.id)}">${esc(g.name)}</button>`).join('');
   $('groupBtn').textContent = showGroups ? 'Close ▴' : (groups.length > 1 ? 'Groups ▾' : 'Group ▾');
   $('game').classList.toggle('hidden', open || !state);
+  document.querySelector('main').classList.toggle('has-tabs', !open && !!state);
   $('invite').classList.toggle('hidden', !state);
   return !open && state;
 }
@@ -626,6 +650,7 @@ function renderComps() {
   const next = compById(state.nextComp);
   $('compCard').classList.toggle('hidden', live);
   $('setup').classList.toggle('hidden', live || !next);
+  if (!live && next && fixturesFor == null) loadFixtures();
   if (document.activeElement !== $('compPick')) {
     $('compPick').innerHTML = open.map((c) =>
       `<option value="${esc(c.id)}"${c.id === state.nextComp ? ' selected' : ''}>${esc(c.name)}</option>`).join('')
@@ -644,6 +669,9 @@ function render() {
   $('coffee').classList.toggle('hidden', !state.tipUrl);
   if (state.tipUrl) $('coffee').href = state.tipUrl;
   $('live').classList.toggle('hidden', !m);
+  if (m && !wasLive) showTab('play'); // a match kicking off brings everyone to it
+  wasLive = !!m;
+  document.querySelector('#tabs [data-show="play"]').textContent = m ? '● Live' : 'Play';
 
   $('livePill').classList.toggle('hidden', !m || Date.now() < m.kickoff);
   $('livePill').textContent = m?.fixtureId === 'manual' ? 'TEST' : 'LIVE';
@@ -705,6 +733,8 @@ function render() {
       $('stakes').innerHTML = Object.entries(state.players).map(([id, p]) =>
         `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${bal(id)} tokens</span></span><input class="stake" type="number" min="0" max="${bal(id)}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${state.pendingStakes[id] ?? ''}" placeholder="—"></li>`).join('')
         || '<li class="meta plain">Add players below first.</li>';
+      // The add-player box lives on the Table tab, so point there while the game is short of players.
+      if (Object.keys(state.players).length < 2) $('stakes').innerHTML += '<li class="meta plain">You need at least two players. Send the invite, or add them on the Table tab.</li>';
     }
     const meKnown = me && state.players[me];
     const mine = meKnown && state.pendingGuesses[me];
@@ -879,7 +909,7 @@ $('compCreate').onclick = async () => {
   $('compNew').open = false;
   viewComp = null;
   const c = compById(body.nextComp);
-  if (c?.kind === 'tournament') { $('date').value = c.from; }
+  if (c?.kind === 'tournament') { $('date').value = c.from; loadFixtures(); }
   render();
 };
 $('compEnd').onclick = () => {
@@ -901,22 +931,70 @@ $('add').onclick = () => {
 };
 $('newName').onkeydown = (e) => { if (e.key === 'Enter') $('add').click(); };
 
-const TEST_OPTION = '<option value="manual" data-label="Test match">Test match (tap corners yourself)</option>';
-$('date').value = new Date().toISOString().slice(0, 10);
-$('loadFixtures').onclick = async () => {
-  $('err').textContent = '';
-  const r = await fetch('/api/fixtures?date=' + $('date').value);
-  const body = await r.json();
-  if (!r.ok || body.error) { $('err').textContent = body.error || 'Could not load matches'; return; }
-  $('fixture').innerHTML = TEST_OPTION + (body.fixtures.length
-    ? body.fixtures.map((f) => `<option value="${esc(f.id)}" data-label="${esc(f.label)}" data-kickoff="${esc(f.kickoff)}">${esc(f.label)} · ${new Date(f.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</option>`).join('')
-    : '<option value="">No Premier League matches that day</option>');
+// The day's matches load on their own and show as a list, so starting one is a tap.
+const TEST_MATCH = { id: 'manual', label: 'Test match' };
+const today = () => new Date().toISOString().slice(0, 10);
+let fixtures = null; // null while loading
+let fixturesFor = null; // the day they were loaded for
+let picked = null;
+$('date').value = today();
+
+async function loadFixtures() {
+  const day = $('date').value || today();
+  fixturesFor = day;
+  fixtures = null;
+  if (picked?.id !== TEST_MATCH.id) picked = null;
+  renderFixtures();
+  try {
+    const r = await fetch('/api/fixtures?date=' + day);
+    const body = await r.json();
+    if (!r.ok || body.error) throw new Error(body.error || 'Could not load matches');
+    if (fixturesFor === day) fixtures = body.fixtures;
+  } catch (e) {
+    if (fixturesFor === day) { fixtures = []; $('err').textContent = e.message; }
+  }
+  renderFixtures();
+}
+
+function renderFixtures() {
+  const day = fixturesFor || today();
+  $('fixturesDay').textContent = day === today() ? 'Today’s matches'
+    : `Matches on ${new Date(day + 'T12:00').toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}`;
+  const list = [...(fixtures || []), ...(picked?.id === TEST_MATCH.id ? [TEST_MATCH] : [])];
+  const when = (f) => (f.kickoff ? new Date(f.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'tap corners yourself');
+  $('fixtureList').innerHTML = fixtures == null ? '<li class="meta plain">Loading matches…</li>'
+    : list.length ? list.map((f) => `<li data-fixture="${esc(f.id)}" class="${picked?.id === f.id ? 'on' : ''}"><span>${esc(f.label)}</span><span class="meta">${when(f)}</span></li>`).join('')
+    : `<li class="meta plain">No Premier League matches ${day === today() ? 'today' : 'that day'}. Pick another day below.</li>`;
+  $('start').disabled = !picked;
+}
+
+$('fixtureList').onclick = (e) => {
+  const li = e.target.closest('li[data-fixture]');
+  if (!li) return;
+  picked = [...(fixtures || []), TEST_MATCH].find((f) => String(f.id) === li.dataset.fixture) || null;
+  renderFixtures();
 };
+$('date').onchange = loadFixtures;
+$('testMatch').onclick = () => { picked = TEST_MATCH; $('otherDay').open = false; renderFixtures(); };
 
 $('start').onclick = () => {
-  const opt = $('fixture').selectedOptions[0];
-  act('startMatch', { fixtureId: opt?.value, label: opt?.dataset.label, kickoff: opt?.dataset.kickoff, golden: $('golden').checked });
+  if (!picked) return;
+  act('startMatch', { fixtureId: picked.id, label: picked.label, kickoff: picked.kickoff, golden: $('golden').checked })
+    .then((ok) => { if (ok) { picked = null; renderFixtures(); } });
 };
+
+// Bottom tabs. Play is where everything starts; a match going live brings you back to it.
+let tab = 'play';
+function showTab(t) {
+  tab = t;
+  $('game').dataset.on = t;
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.show === t));
+}
+$('tabs').onclick = (e) => {
+  const b = e.target.closest('button[data-show]');
+  if (b) { showTab(b.dataset.show); scrollTo({ top: 0 }); }
+};
+showTab('play');
 
 // A join link (/?join=CODE) opens that group on this phone.
 const params = new URLSearchParams(location.search);
