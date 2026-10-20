@@ -42,6 +42,7 @@ Optional, alongside the flag game, and open to players who sit the flag game out
 4. In **Settings → Environment Variables**, add:
    - `API_FOOTBALL_KEY`: your key from step 1
    - `GAME_PIN` (optional): a PIN friends need before they can change anything
+   - `TIP_URL` (optional): an https link, such as your Buy Me a Coffee page, shown at the bottom of the app
 5. Redeploy, and share the link with your friends.
 
 ## Try it locally

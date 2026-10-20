@@ -57,6 +57,7 @@
   .err:empty { display: none; }
   .warn { color: var(--accent); }
   .hidden { display: none !important; }
+  .tip { display: block; text-align: center; color: var(--muted); font-size: 14px; padding: 12px; }
   details summary { cursor: pointer; color: var(--muted); min-height: 44px; display: flex; align-items: center; }
   input.guess { width: 96px; flex: none; text-align: center; }
   .ladder li .tok { font: 700 18px 'Barlow Condensed', sans-serif; }
@@ -163,6 +164,7 @@
   </section>
 
   <div class="err" id="err"></div>
+  <a class="tip hidden" id="tip" target="_blank" rel="noopener">Enjoying Corners? Buy me a coffee ☕</a>
 </main>
 <script>
 let state = null;
@@ -222,6 +224,8 @@ function shortLabel(label) {
 
 function render() {
   const m = state.match;
+  $('tip').classList.toggle('hidden', !state.tipUrl);
+  if (state.tipUrl) $('tip').href = state.tipUrl;
   $('live').classList.toggle('hidden', !m);
   $('setup').classList.toggle('hidden', !!m);
 

@@ -25,6 +25,12 @@ export async function loadAndPoll(now = Date.now()) {
   return state;
 }
 
+// Optional "Buy me a coffee" link. Only https links are shown.
+function tipUrl() {
+  const u = process.env.TIP_URL || '';
+  return /^https:\/\//.test(u) ? u : null;
+}
+
 // Corner guesses stay secret until the match starts: each phone sees only its own number.
 function hiddenGuesses(state, me) {
   const out = {};
@@ -43,6 +49,7 @@ export function view(state, me) {
     history: state.history,
     startTokens: state.startTokens,
     pinRequired: Boolean(process.env.GAME_PIN),
+    tipUrl: tipUrl(),
     pollSeconds: POLL_MS / 1000,
     match: m && {
       ...m,
