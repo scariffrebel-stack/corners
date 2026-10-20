@@ -317,3 +317,13 @@ test('a golden corner that never comes leaves the whole pot to the holder', () =
   assert.deepEqual(r.golden, { corner: 12, winner: null, bonus: 0 });
   assert.equal(g.balance(s, r.winner), 110);
 });
+
+test('a group can say what its tokens stand for, or clear it', () => {
+  const s = g.emptyState();
+  g.setLabel(s, ' pint ', 10);
+  assert.deepEqual(s.label, { unit: 'pint', per: 10 });
+  assert.throws(() => g.setLabel(s, 'pint', 0), /how many tokens/);
+  assert.throws(() => g.setLabel(s, 'pint', 2.5), /how many tokens/);
+  g.setLabel(s, '', '');
+  assert.equal(s.label, undefined);
+});
