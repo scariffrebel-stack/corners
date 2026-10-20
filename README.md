@@ -60,7 +60,7 @@ alerts section stays hidden.
 ## Rules
 
 1. Everyone starts the season with the same tokens (100 unless you pick another amount under New season). Most tokens at the end of the season wins.
-2. Each player picks their own stake for a match on their own phone, from 1 token up to their balance. No stake means sitting it out.
+2. Each player picks their own stake for a match on their own phone, from 1 token up to their balance. No stake means sitting it out. Once you have picked your name on a phone, nobody else can change your stake; a friend at the table without the app can have theirs typed in for them.
 3. At the start the order is shuffled and the first player in it holds the flag.
 4. Every corner to either team, stoppage time included, moves the flag one place along.
 5. The flag holder at full time wins the pot. No corners means the starter wins.

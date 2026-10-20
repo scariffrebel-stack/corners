@@ -341,7 +341,7 @@
     </details>
     <h2 style="margin-top:14px">Stakes</h2>
     <div class="chips hidden" id="myStake"></div>
-    <p class="meta" style="margin-top:0" id="stakeNote">Tap your stake. Anyone can type a stake for a friend at the table. Blank sits it out.</p>
+    <p class="meta" style="margin-top:0" id="stakeNote">Tap your stake. Only you can change yours. You can type one in for a friend at the table who isn't using the app.</p>
     <ul id="stakes"></ul>
     <div class="row" style="margin-top:12px"><button class="big" id="start">Shuffle and start</button></div>
     <details id="extras" style="margin-top:8px">
@@ -627,6 +627,7 @@ async function refresh() {
     state = body;
     rememberGroup(body.group);
     render();
+    claimMe(); // phones that picked a name before stakes were locked
   } catch (e) {
     $('err').textContent = 'Can’t reach the game: ' + e.message;
   }
@@ -644,6 +645,15 @@ function setMe(id) {
   store('corners-me:' + groupId, id);
   const n = state?.players?.[id]?.name;
   if (n) store('corners-name', n); // filled in next time this phone joins a group
+  claimMe();
+}
+// Tells the group this phone is this player's, so nobody else can change their stake.
+let claiming = false;
+function claimMe() {
+  const p = me && state?.players?.[me];
+  if (!p || p.phone || claiming) return;
+  claiming = true;
+  act('claim').finally(() => { claiming = false; });
 }
 // "Arsenal v Chelsea" -> "ARS v CHE" so it fits the scoreboard
 function shortLabel(label) {
@@ -843,8 +853,11 @@ function render() {
   } else {
     const editing = document.activeElement?.closest?.('#stakes');
     if (!editing) {
+      // Players using the app set their own stake; only friends without it can be typed in for.
       $('stakes').innerHTML = Object.entries(state.players).map(([id, p]) =>
-        `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${bal(id)} tokens</span></span><input class="stake" type="number" min="0" max="${bal(id)}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${state.pendingStakes[id] ?? ''}" placeholder="—"></li>`).join('')
+        `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${bal(id)} tokens</span></span>${id === me || !p.phone
+          ? `<input class="stake" type="number" min="0" max="${bal(id)}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${state.pendingStakes[id] ?? ''}" placeholder="—">`
+          : `<span class="meta">${state.pendingStakes[id] ? `${state.pendingStakes[id]} in` : 'not in yet'}</span>`}</li>`).join('')
         || '<li class="meta plain">Add players below first.</li>';
     }
     const meKnown = me && state.players[me];

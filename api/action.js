@@ -7,7 +7,7 @@ import { sendAlert, sendMatchAlerts } from '../lib/push.js';
 const ACTIONS = {
   addPlayer: (s, b) => game.addPlayer(s, b.name),
   removePlayer: (s, b) => game.removePlayer(s, b.id),
-  startMatch: (s, b) => game.startMatch(s, b),
+  startMatch: (s, b) => game.startMatch(s, { ...b, stakes: undefined }), // the stakes players set themselves
   corner: (s, b) => game.manualCorner(s, b.delta),
   callCorner: (s, b) => game.callCorner(s, b.me),
   settle: (s) => game.settle(s),
@@ -16,8 +16,9 @@ const ACTIONS = {
   createCompetition: (s, b) => game.createCompetition(s, b),
   setNextComp: (s, b) => game.setNextComp(s, b.id),
   endCompetition: (s, b) => game.endCompetition(s, b.id),
-  setStake: (s, b) => game.setStake(s, b.id, b.stake),
-  setGuess: (s, b) => game.setGuess(s, b.id, b.guess, b.stake),
+  setStake: (s, b) => game.setStake(s, b.id, b.stake, b.me ?? null),
+  setGuess: (s, b) => game.setGuess(s, b.id, b.guess, b.stake, b.me ?? null),
+  claim: () => {}, // picking a name; the claim itself is below
   react: (s, b) => game.react(s, b.id, b.emoji),
   setLabel: (s, b) => game.setLabel(s, b.unit, b.per),
   renameGroup: (s, b) => game.renameGroup(s, b.name),
@@ -38,6 +39,7 @@ export default async function handler(req, res) {
     const state = await loadAndPoll(body.g);
     const before = Object.keys(state.pendingStakes || {}).length;
     const was = snapshot(state);
+    game.claim(state, body.me);
     const result = act(state, body);
     const alert = alertAfter(state, body.type, { before, actor: body.me });
     await save(state);
