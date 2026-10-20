@@ -1,6 +1,6 @@
 import { save } from '../lib/store.js';
 import * as game from '../lib/game.js';
-import { loadAndPoll, view, send, readBody } from './_common.js';
+import { loadAndPoll, view, send, sendError, readBody } from './_common.js';
 
 const ACTIONS = {
   addPlayer: (s, b) => game.addPlayer(s, b.name),
@@ -10,8 +10,12 @@ const ACTIONS = {
   settle: (s) => game.settle(s),
   abandon: (s) => game.abandon(s),
   newSeason: (s, b) => game.newSeason(s, b.startTokens),
+  createCompetition: (s, b) => game.createCompetition(s, b),
+  setNextComp: (s, b) => game.setNextComp(s, b.id),
+  endCompetition: (s, b) => game.endCompetition(s, b.id),
   setStake: (s, b) => game.setStake(s, b.id, b.stake),
   setGuess: (s, b) => game.setGuess(s, b.id, b.guess, b.stake),
+  react: (s, b) => game.react(s, b.id, b.emoji),
 };
 
 export default async function handler(req, res) {
@@ -23,11 +27,11 @@ export default async function handler(req, res) {
     }
     const act = ACTIONS[body.type];
     if (!act) return send(res, 400, { error: 'Unknown action' });
-    const state = await loadAndPoll();
+    const state = await loadAndPoll(body.g);
     const result = act(state, body);
     await save(state);
     send(res, 200, { ...view(state, body.me), result: typeof result === 'string' ? result : undefined });
   } catch (e) {
-    send(res, e instanceof game.GameError ? 400 : 500, { error: e.message });
+    sendError(res, e);
   }
 }

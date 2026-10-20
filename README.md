@@ -4,6 +4,29 @@ A game for friends watching the Premier League. Each player stakes their own tok
 random player starts with the Corner flag, and the flag passes along the order every
 time either team gets a corner. Whoever holds it at full time takes the whole pot.
 
+## Groups
+
+Anyone can start their own group from the home screen: give it a name, your name, and how many
+tokens everyone starts with. Each group has its own players, tokens, matches and results.
+Tap **Invite** to send a join link, or read out the 6-letter code shown with it. The same phone
+can be in several groups, and the group name under the logo switches between them.
+
+The game that was running before groups existed carries on as the group called "Corners", with
+its players and tokens kept. Phones that had already picked a name open straight into it.
+
+## Competitions
+
+Every match is played for a competition, and each competition has its own tokens:
+
+- **Season:** runs until you end it, or until you tap **New season**. Most tokens at the end wins.
+- **Tournament:** a run of days, such as one weekend or a cup run. Only matches on those days count,
+  and it ends by itself after the last day.
+- **One-off match:** a single game with its own tokens, over at full time.
+
+A tournament or one-off match never touches the season's tokens. Pick what the next match is for under
+**Playing for**, and look back at any competition's final table from the table card. A group from
+before competitions carries on as its first season, with every balance and result kept.
+
 ## Rules
 
 1. Everyone starts the season with the same tokens (100 unless you pick another amount under New season). Most tokens at the end of the season wins.
@@ -13,6 +36,18 @@ time either team gets a corner. Whoever holds it at full time takes the whole po
 5. The flag holder at full time wins the pot. No corners means the starter wins.
 6. If the live feed takes a corner back, the flag moves back too.
 7. An abandoned or postponed match refunds every stake.
+
+### Golden corner
+
+Optional, ticked when starting a match. A secret corner from 1 to 12 is picked at random. Whoever the
+flag goes to on that corner takes a quarter of the pot at full time, and the holder gets the rest.
+The number shows once it's been taken. If the match never gets that many corners, the holder takes it all.
+
+### During the match
+
+- The match log lists every corner with its minute, whose corner it was, and who the flag went to.
+  A corner the feed takes back gets its own line.
+- Tap a reaction (😱 🍺 🔥 😂 👏 😤) to let everyone else watching see it.
 
 ### Side pot: guess the corners
 
@@ -30,7 +65,7 @@ Optional, alongside the flag game, and open to players who sit the flag game out
   under the free plan's 100 requests a day. Set `POLL_SECONDS` lower on a paid plan.
 - The flag holder is worked out from the total, so corrections in the feed fix themselves.
 - If the feed is wrong or stuck, the backup controls let you add or remove a corner, end the match, or abandon it.
-- State (players, tokens, the live match, results) is kept in Upstash Redis.
+- Each group's state (players, tokens, the live match, results) is kept in Upstash Redis, one key per group.
 
 ## Set it up (free)
 
@@ -41,7 +76,7 @@ Optional, alongside the flag game, and open to players who sit the flag game out
    This adds the `KV_REST_API_URL` and `KV_REST_API_TOKEN` settings.
 4. In **Settings → Environment Variables**, add:
    - `API_FOOTBALL_KEY`: your key from step 1
-   - `GAME_PIN` (optional): a PIN friends need before they can change anything
+   - `GAME_PIN` (optional): a PIN needed before anyone can start a group or change anything
 5. Redeploy, and share the link with your friends.
 
 ## Try it locally

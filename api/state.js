@@ -1,10 +1,10 @@
-import { loadAndPoll, view, send } from './_common.js';
+import { loadAndPoll, view, send, sendError } from './_common.js';
 
 export default async function handler(req, res) {
   try {
-    const me = new URL(req.url, 'http://x').searchParams.get('me');
-    send(res, 200, view(await loadAndPoll(), me));
+    const q = new URL(req.url, 'http://x').searchParams;
+    send(res, 200, view(await loadAndPoll(q.get('g')), q.get('me')));
   } catch (e) {
-    send(res, 500, { error: e.message });
+    sendError(res, e);
   }
 }
