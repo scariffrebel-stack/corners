@@ -385,13 +385,17 @@
           <p class="meta" id="compKindNote" style="margin:0 0 8px"></p>
           <div class="row">
             <input id="compName" placeholder="Name, e.g. 2026/27" maxlength="40">
-            <input id="compTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens" aria-label="Starting tokens each" style="flex:none;width:96px">
+          </div>
+          <div class="row" style="margin-top:8px;align-items:center">
+            <label for="compTokens" class="meta" style="flex:none">Everyone starts with</label>
+            <input id="compTokens" type="number" min="1" inputmode="numeric" style="flex:none;width:84px">
+            <span class="meta">tokens</span>
           </div>
           <div class="row" id="compDates" style="margin-top:8px">
             <input type="date" id="compFrom" aria-label="First day">
             <input type="date" id="compTo" aria-label="Last day">
           </div>
-          <p class="meta" style="margin:8px 0">Every competition has its own tokens, so it never touches the others.</p>
+          <p class="meta" style="margin:8px 0">That's each player's own tokens to bet with, not a pot. Each match's stakes make that match's pot. They're kept apart from other competitions, so a tournament never changes the season table.</p>
           <button id="compCreate" style="width:100%">Start it</button>
         </details>
       </div>
@@ -766,6 +770,7 @@ function renderComps() {
 
 let compKind = 'season';
 function renderCompKind() {
+  if (document.activeElement !== $('compTokens') && !$('compTokens').value) $('compTokens').value = state?.startTokens ?? 100;
   document.querySelectorAll('#compKind button').forEach((b) => b.classList.toggle('on', b.dataset.kind === compKind));
   $('compKindNote').textContent = { season: 'Runs until you end it. Most tokens wins.', tournament: 'A few days, like one weekend or a cup run.', match: 'Just one game, over at full time.' }[compKind];
   $('compDates').classList.toggle('hidden', compKind !== 'tournament');
