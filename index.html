@@ -392,6 +392,12 @@
             <input id="compTokens" type="number" min="1" inputmode="numeric" style="flex:none;width:84px">
             <span class="meta">tokens</span>
           </div>
+          <div class="row" style="margin-top:8px;align-items:center">
+            <label for="compPer" class="meta" style="flex:none">Playing for</label>
+            <input id="compPer" type="number" min="1" inputmode="numeric" placeholder="20" aria-label="How many tokens" style="flex:none;width:64px">
+            <span class="meta" style="flex:none">tokens = 1</span>
+            <input id="compUnit" placeholder="coffee" maxlength="24" aria-label="What they make" style="min-width:0">
+          </div>
           <div class="row" id="compDates" style="margin-top:8px">
             <input type="date" id="compFrom" aria-label="First day">
             <input type="date" id="compTo" aria-label="Last day">
@@ -400,7 +406,7 @@
           <button id="compCreate" style="width:100%">Start it</button>
         </details>
       </div>
-    <div class="line"><div class="what"><b>Tokens make</b><span class="meta" id="labelNote"></span></div><button class="ghost small" data-edit="label">Change</button></div>
+    <div class="line" id="labelLine"><div class="what"><b>Tokens make</b><span class="meta" id="labelNote"></span></div><button class="ghost small" data-edit="label">Change</button></div>
     <div id="labelEdit" class="edit hidden">
       <p class="meta" style="margin-top:0">Something to play for between friends, like "10 tokens = 1 pint". The app never takes or pays out money.</p>
       <div class="row">
@@ -461,17 +467,18 @@ function plural(unit) {
   const [first, ...rest] = unit.split(' ');
   return [/s$/i.test(first) ? first : first + 's', ...rest].join(' ');
 }
-function worth(n) {
-  const l = state.label;
+// What tokens make depends on the competition: a coffee for a one-off, a lunch for a season.
+function worth(n, c) {
+  const l = c?.label;
   if (!l) return '';
   const v = Math.round((Math.abs(n) / l.per) * 10) / 10;
   return `${v} ${v === 1 ? l.unit : plural(l.unit)}`;
 }
 // How someone stands against where they started, in the group's label if it has one.
-function upDown(tokens, start) {
+function upDown(tokens, start, c) {
   const d = tokens - start;
   if (!d) return '';
-  const w = worth(d);
+  const w = worth(d, c);
   return `<span class="meta ${d > 0 ? 'up' : ''}">${d > 0 ? '+' : '−'}${Math.abs(d)}${w ? ` · ${w} ${d > 0 ? 'up' : 'down'}` : ''}</span>`;
 }
 
@@ -527,7 +534,7 @@ async function toggleAlerts() {
 let boardSort = 'winRate';
 let boardScope = 'comp';
 const BOARDS = {
-  net: { rank: (s) => s.net, show: (s) => `${s.net > 0 ? '+' : ''}${s.net}${worth(s.net) ? ` <span class="meta">${worth(s.net)}</span>` : ''}` },
+  net: { rank: (s) => s.net, show: (s) => `${s.net > 0 ? '+' : ''}${s.net}${worth(s.net, boardComp) ? ` <span class="meta">${worth(s.net, boardComp)}</span>` : ''}` },
   winRate: { rank: (s) => (s.played ? s.winRate : -1), show: (s) => `${Math.round(s.winRate * 100)}% <span class="meta">of ${s.played}</span>` },
   flags: { rank: (s) => s.flags, show: (s) => `${s.flags}${s.biggestPot ? ` <span class="meta">best pot ${s.biggestPot}</span>` : ''}` },
   guesser: {
@@ -536,7 +543,9 @@ const BOARDS = {
   },
   streak: { rank: (s) => s.bestStreak * 1000 + s.streak, show: (s) => `${s.bestStreak} <span class="meta">best · now ${s.streak}</span>` },
 };
+let boardComp = null; // the competition the leaderboard shows, for what its tokens make
 function renderBoard(v) {
+  boardComp = boardScope === 'all' ? null : v;
   const st = boardScope === 'all' ? state.stats.all : v && state.stats.byComp[v.id];
   if (!st || !state.stats.all?.totals?.matches) { $('boardCard').classList.add('hidden'); return; }
   $('boardCard').classList.remove('hidden');
@@ -560,6 +569,7 @@ function renderBoard(v) {
 
 // Which competition's table this phone is looking at. Follows the live or next match unless picked.
 let viewComp = null;
+let compLabelFilled = false; // the new-competition form's prize, suggested once per group
 
 function stored(key) { try { return localStorage.getItem(key); } catch { return null; } }
 function store(key, value) { try { value == null ? localStorage.removeItem(key) : localStorage.setItem(key, value); } catch {} }
@@ -592,6 +602,7 @@ function openGroup(id) {
   state = null;
   lastHolder = null;
   viewComp = null;
+  compLabelFilled = false;
 }
 
 function pin(needed = state?.pinRequired) {
@@ -711,13 +722,16 @@ function renderGroups() {
     $('hostNote').textContent = state.host ? (isHost() ? 'You set up this group, so only you can end a competition or remove a player.' : `Set up by ${name(state.host)}, who can end a competition or remove a player.`) : '';
     $('groupCode').textContent = state.group.code;
     renderMembers();
-    $('labelClear').classList.toggle('hidden', !state.label);
-    $('labelNote').textContent = state.label ? `${state.label.per} tokens = 1 ${state.label.unit}` : 'Not set yet, e.g. 10 tokens = 1 pint';
+    const nc = compById(state.nextComp);
+    const nl = nc?.label;
+    $('labelLine').classList.toggle('hidden', !nc);
+    $('labelClear').classList.toggle('hidden', !nl);
+    $('labelNote').textContent = nl ? `${nl.per} tokens = 1 ${nl.unit} in ${nc.name}` : `Not set for ${nc?.name || 'this'} yet, e.g. 20 tokens = 1 coffee`;
     $('labelEdit').classList.toggle('hidden', editing !== 'label');
     document.querySelectorAll('[data-edit]').forEach((b) => { b.textContent = editing === b.dataset.edit ? 'Done' : 'Change'; });
     if (!document.activeElement?.closest?.('#labelEdit')) {
-      $('labelPer').value = state.label?.per ?? '';
-      $('labelUnit').value = state.label?.unit ?? '';
+      $('labelPer').value = nl?.per ?? '';
+      $('labelUnit').value = nl?.unit ?? '';
     }
   }
   if (!$('newGroupMe').value && document.activeElement !== $('newGroupMe')) $('newGroupMe').value = stored('corners-name') || '';
@@ -774,6 +788,12 @@ function renderComps() {
 let compKind = 'season';
 function renderCompKind() {
   if (document.activeElement !== $('compTokens') && !$('compTokens').value) $('compTokens').value = state?.startTokens ?? 100;
+  // Suggest what the last competition played for, once, so it can be changed or cleared.
+  if (!compLabelFilled && state && $('compNew').open && !$('compCard').classList.contains('hidden')) {
+    compLabelFilled = true;
+    $('compUnit').value = state.label?.unit || '';
+    $('compPer').value = state.label?.per || '';
+  }
   document.querySelectorAll('#compKind button').forEach((b) => b.classList.toggle('on', b.dataset.kind === compKind));
   $('compKindNote').textContent = { season: 'Runs until you end it. Most tokens wins.', tournament: 'A few days, like one weekend or a cup run.', match: 'Just one game, over at full time.' }[compKind];
   $('compDates').classList.toggle('hidden', compKind !== 'tournament');
@@ -813,16 +833,18 @@ function flagMoment(m) {
 
 // Full time: who won and what, shown once on each phone for a recent result.
 const RESULT_SHOW_MS = 30 * 60 * 1000;
+let resultComp = null; // the competition the winner screen is about, so See the table opens it
 function showResult() {
   const last = state.competitions.flatMap((c) => c.history.map((h) => ({ ...h, comp: c }))).sort((a, b) => b.at - a.at)[0];
   const key = 'corners-seen-result:' + groupId;
   if (!last || last.abandoned || Date.now() - last.at > RESULT_SHOW_MS || Number(stored(key)) >= last.at) return;
   store(key, String(last.at));
+  resultComp = last.comp.id;
   const mine = last.winner === me;
   $('winnerMatch').textContent = `${last.label} · ${last.corners} corner${last.corners === 1 ? '' : 's'}`;
   $('winnerWho').textContent = mine ? 'You win!' : `${name(last.winner)} wins`;
   const won = last.pot - (last.golden?.winner ? last.golden.bonus : 0);
-  $('winnerWins').textContent = `${won} tokens${worth(won) ? ` · worth ${worth(won)}` : ''}`;
+  $('winnerWins').textContent = `${won} tokens${worth(won, last.comp) ? ` · worth ${worth(won, last.comp)}` : ''}`;
   const extras = [];
   if (last.golden?.winner) extras.push(`★ Golden corner ${last.golden.corner}: ${name(last.golden.winner)} +${last.golden.bonus}`);
   if (last.sidePot) extras.push(`Side pot ${last.sidePot}: ${last.guessWinners.map(name).join(' and ')}`);
@@ -876,7 +898,8 @@ function render() {
       const off = g.guess - m.corners;
       return `<li class="${m.closest.includes(id) ? 'holder' : ''}"><span>${esc(name(id))}${id === me ? ' (you)' : ''} · <b>${g.guess}</b></span><span class="meta">${off === 0 ? 'spot on' : `${Math.abs(off)} ${off > 0 ? 'over' : 'under'}`} · ${g.stake} tokens</span></li>`;
     }).join('');
-    $('matchComp').textContent = worth(m.pot) ? `Pot worth ${worth(m.pot)}` : '';
+    const mc = compById(m.compId);
+    $('matchComp').textContent = worth(m.pot, mc) ? `Pot worth ${worth(m.pot, mc)}` : '';
     const gd = m.golden;
     $('goldenNote').classList.toggle('hidden', !gd);
     if (gd) {
@@ -894,8 +917,9 @@ function render() {
     $('reacts').innerHTML = recent.map((r) => r.text
       ? `<span class="said"><b>${esc(r.id === me ? 'You' : name(r.id))}</b> ${esc(r.text)}</span>`
       : `<span>${esc(name(r.id))} ${r.emoji}</span>`).join('');
-    const log = [...(m.log || [])].reverse();
-    $('matchLog').innerHTML = log.map((e) => {
+    // In order from kick-off: the flag starts with the first player drawn, and corner 1 passes it on.
+    const log = m.log || [];
+    $('matchLog').innerHTML = `<li><span>Start · drawn at random</span><span class="meta">flag with ${esc(name(m.order[0]))}</span></li>` + log.map((e) => {
       const when = e.minute ? `${esc(e.minute)} · ` : '';
       const gold = gd && !gd.secret && !e.back && e.n === gd.corner ? ' <span class="gold">★ golden</span>' : '';
       const how = e.by ? ` <span class="meta">(called by ${esc(e.by === me ? 'you' : name(e.by))})</span>`
@@ -903,7 +927,7 @@ function render() {
       return e.back
         ? `<li><span>${when}Corner taken back${how}</span><span class="meta">flag back to ${esc(name(e.holder))}</span></li>`
         : `<li><span>${when}Corner ${e.n}${e.team ? ` · ${esc(e.team)}` : ''}${gold}${how}</span><span class="meta">flag to ${esc(name(e.holder))}</span></li>`;
-    }).join('') || '<li class="meta plain">No corners yet.</li>';
+    }).join('');
     $('order').innerHTML = m.order.map((id, i) =>
       `<li class="${id === m.holder ? 'holder' : ''}"><span>${i + 1} · ${esc(name(id))}</span><span class="meta">${m.stakes[id]}</span></li>`).join('');
   } else {
@@ -966,7 +990,7 @@ function render() {
   }
   const rows = v ? v.table : [];
   $('table').innerHTML = rows.map(({ id, tokens }, i) =>
-    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}<br>${upDown(tokens, v.startTokens)}</span><span class="tok">${tokens}</span></li>`).join('')
+    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}<br>${upDown(tokens, v.startTokens, v)}</span><span class="tok">${tokens}</span></li>`).join('')
     || '<li class="meta plain">No players yet.</li>';
 
   renderBoard(v);
@@ -1039,7 +1063,7 @@ $('boardSort').onclick = (e) => {
 };
 $('labelSave').onclick = () => {
   if (!$('labelUnit').value.trim()) { $('err').textContent = 'Say what the tokens make, like pint'; return; }
-  act('setLabel', { per: Number($('labelPer').value || 10), unit: $('labelUnit').value })
+  act('setLabel', { per: Number($('labelPer').value || 10), unit: $('labelUnit').value, compId: state.nextComp })
     .then((ok) => { if (ok) { editing = null; render(); } });
 };
 $('teamList').onclick = (e) => {
@@ -1061,7 +1085,7 @@ $('leaveGroup').onclick = async () => {
   refresh();
 };
 $('alertsBtn').onclick = () => toggleAlerts().catch((e) => { $('err').textContent = 'Couldn’t set up alerts: ' + e.message; });
-$('labelClear').onclick = () => act('setLabel', { unit: '' });
+$('labelClear').onclick = () => act('setLabel', { unit: '', compId: state.nextComp });
 
 $('howtoLink').onclick = () => { showHowto = true; render(); scrollTo({ top: 0, behavior: 'smooth' }); };
 $('howtoBtn').onclick = () => { showHowto = !showHowto; render(); if (showHowto) scrollTo({ top: 0, behavior: 'smooth' }); };
@@ -1120,6 +1144,7 @@ $('guessSave').onclick = () => {
 
 $('compPick').onchange = () => act('setNextComp', { id: $('compPick').value });
 $('compView').onchange = () => { viewComp = $('compView').value; render(); };
+$('compNew').ontoggle = () => { if (!$('compNew').open) compLabelFilled = false; else renderCompKind(); };
 document.querySelectorAll('#compKind button').forEach((b) => {
   b.onclick = () => { compKind = b.dataset.kind; renderCompKind(); };
 });
@@ -1127,9 +1152,11 @@ $('compCreate').onclick = async () => {
   const body = await act('createCompetition', {
     kind: compKind, name: $('compName').value, startTokens: $('compTokens').value,
     from: $('compFrom').value, to: $('compTo').value,
+    unit: $('compUnit').value, per: Number($('compPer').value || 20),
   });
   if (!body) return;
-  ['compName', 'compTokens'].forEach((id) => { $(id).value = ''; });
+  ['compName', 'compTokens', 'compUnit', 'compPer'].forEach((id) => { $(id).value = ''; });
+  compLabelFilled = false;
   $('compNew').open = false;
   editing = null;
   viewComp = null;
@@ -1224,7 +1251,7 @@ $('quickAdd').onclick = () => {
   if (n) act('addPlayer', { name: n }).then((ok) => { if (ok) $('quickName').value = ''; });
 };
 $('quickName').onkeydown = (e) => { if (e.key === 'Enter') $('quickAdd').click(); };
-$('winnerClose').onclick = () => { $('winner').classList.add('hidden'); showTab('table'); scrollTo({ top: 0 }); };
+$('winnerClose').onclick = () => { $('winner').classList.add('hidden'); if (resultComp) viewComp = resultComp; showTab('table'); render(); scrollTo({ top: 0 }); };
 
 $('start').onclick = () => act('startMatch', { golden: $('golden').checked });
 $('pickBtn').onclick = () => {
