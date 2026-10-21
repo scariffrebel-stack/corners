@@ -55,6 +55,7 @@ export function view(state, me) {
     group: { id: state.group.id, name: state.group.name, code: state.group.code },
     players: state.players,
     host: hostId(state),
+    nextMatch: state.nextMatch || null,
     former: state.former || {}, // names of players who have left, for old results
     pendingStakes: state.pendingStakes || {},
     pendingGuesses: hiddenGuesses(state, me),

@@ -8,11 +8,21 @@ time either team gets a corner. Whoever holds it at full time takes the whole po
 
 Anyone can start their own group from the home screen: give it a name, your name, and how many
 tokens everyone starts with. Each group has its own players, tokens, matches and results.
-Tap **Invite** to send a join link, or read out the 6-letter code shown with it. The same phone
+Until a second player joins, the Match tab is just the invite: send the join link, or read out
+the 6-letter code, and watch names appear as mates join. A mate opening the link only sees names
+not already picked on another phone. The same phone
 can be in several groups, and the group name under the logo switches between them.
 
 The game that was running before groups existed carries on as the group called "Corners", with
 its players and tokens kept. Phones that had already picked a name open straight into it.
+
+## Match day
+
+The Match tab walks one step at a time. Someone picks the match once for the whole group, so
+every phone shows the same fixture. Then everyone sets their own stake, and "Who's in" shows who
+has staked and the pot. Once two players are in, **Shuffle and start** goes live. At full time
+**Next match** goes back to picking. The three tabs are Match, Table (with recent results under
+the table) and Group.
 
 ## Competitions
 
