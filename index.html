@@ -212,6 +212,10 @@
           <button id="compCreate" style="width:100%">Start it</button>
         </details>
       </div>
+      <div class="group-block">
+        <button class="ghost small" id="leaveGroup">Leave this group</button>
+        <p class="meta" style="margin:6px 0 0">Takes it off this phone. Your tokens and results stay, so you can rejoin with the code.</p>
+      </div>
     </div>
     <div id="groupsMine" class="group-block">
       <h2>Switch group</h2>
@@ -973,6 +977,17 @@ $('teamList').onclick = (e) => {
   const mine = new Set(state.players[me]?.teams || []);
   if (mine.has(b.dataset.team)) mine.delete(b.dataset.team); else mine.add(b.dataset.team);
   act('followTeams', { id: me, teams: [...mine] });
+};
+// Leaving only takes the group off this phone: the group, its tokens and its results carry on
+// for everyone else, and the join code brings it back.
+$('leaveGroup').onclick = async () => {
+  if (!state || !confirm(`Leave ${state.group.name}? It comes off this phone. You can rejoin any time with the code ${state.group.code}.`)) return;
+  if (alertsOn()) await act('unsubscribe', { endpoint: stored('corners-alerts:' + groupId) });
+  store('corners-alerts:' + groupId, null);
+  forgetGroup(groupId);
+  if (groups.length) openGroup(groups[0].id);
+  showGroups = !groupId;
+  refresh();
 };
 $('alertsBtn').onclick = () => toggleAlerts().catch((e) => { $('err').textContent = 'Couldn’t set up alerts: ' + e.message; });
 $('labelClear').onclick = () => act('setLabel', { unit: '' });
