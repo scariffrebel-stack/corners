@@ -334,10 +334,6 @@
     <div class="row hidden" id="compViewRow" style="margin-bottom:8px"><select id="compView" aria-label="Show the table for"></select></div>
     <p class="meta hidden" id="compWinners" style="margin-top:0"></p>
     <ul id="table" class="ladder"></ul>
-    <div class="row" style="margin-top:10px">
-      <input id="newName" placeholder="Add a player" maxlength="30">
-      <button id="add">Add</button>
-    </div>
   </section>
 
   <section class="card" data-tab="table">
@@ -369,6 +365,14 @@
     <p class="group-name" id="settingsTitle" style="margin:0">This group</p>
     <p class="meta" id="hostNote" style="margin:0 0 4px"></p>
     <div class="line"><div class="what"><b>Invite friends</b><span class="meta">Join code <span class="code" id="groupCode"></span></span></div><button class="small" id="groupInvite">Send invite</button></div>
+    <div class="line" style="display:block">
+      <b id="membersTitle">Players</b>
+      <ul id="members" class="ladder" style="margin:8px 0 0"></ul>
+      <div class="row" style="margin-top:8px">
+        <input id="newName" placeholder="Add a mate without the app" maxlength="30">
+        <button id="add">Add</button>
+      </div>
+    </div>
     <div class="line"><div class="what"><b>Playing for</b><span class="meta" id="compNote"></span></div><button class="ghost small" data-edit="comp">Change</button></div>
       <div id="compCard" class="edit hidden">
         <div class="row" id="compPickRow">
@@ -708,6 +712,7 @@ function renderGroups() {
     $('settingsTitle').textContent = state.group.name;
     $('hostNote').textContent = state.host ? (isHost() ? 'You set up this group, so only you can end a competition or remove a player.' : `Set up by ${name(state.host)}, who can end a competition or remove a player.`) : '';
     $('groupCode').textContent = state.group.code;
+    renderMembers();
     $('labelClear').classList.toggle('hidden', !state.label);
     $('labelNote').textContent = state.label ? `${state.label.per} tokens = 1 ${state.label.unit}` : 'Not set yet, e.g. 10 tokens = 1 pint';
     $('labelEdit').classList.toggle('hidden', editing !== 'label');
@@ -966,7 +971,7 @@ function render() {
   }
   const rows = v ? v.table : [];
   $('table').innerHTML = rows.map(({ id, tokens }, i) =>
-    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}<br>${upDown(tokens, v.startTokens)}</span><span><span class="tok">${tokens}</span>${v.status === 'open' && isHost() && id !== state.host ? ` <button class="ghost small" data-remove="${id}" title="Remove">✕</button>` : ''}</span></li>`).join('')
+    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}<br>${upDown(tokens, v.startTokens)}</span><span class="tok">${tokens}</span></li>`).join('')
     || '<li class="meta plain">No players yet.</li>';
 
   renderBoard(v);
@@ -974,6 +979,17 @@ function render() {
     ? `<li><span>${esc(h.label)}</span><span class="meta">abandoned, stakes refunded</span></li>`
     : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corner${h.corners === 1 ? '' : 's'} · pot ${h.pot}</span></span><span style="text-align:right">${resultLines(h).join('<br>')}</span></li>`).join('')
     || '<li class="meta plain">No matches yet.</li>';
+}
+
+// The Group tab's player list: who's in, who's on a phone, and remove for the organiser.
+function renderMembers() {
+  const ids = Object.keys(state.players).sort((a, b) => (b === state.host) - (a === state.host));
+  $('membersTitle').textContent = `Players · ${ids.length}`;
+  $('members').innerHTML = ids.map((id) => {
+    const tags = [id === state.host && 'organiser', state.players[id].phone ? 'on the app' : 'not on the app yet'].filter(Boolean).join(' · ');
+    const remove = isHost() && id !== state.host && !state.match?.order.includes(id);
+    return `<li><span>${esc(name(id))}${id === me ? ' (you)' : ''}<br><span class="meta">${tags}</span></span>${remove ? `<button class="ghost small" data-remove="${id}" aria-label="Remove ${esc(name(id))}">Remove</button>` : ''}</li>`;
+  }).join('');
 }
 
 // Who won what in one match, a line per prize, using the names from the day.
