@@ -54,6 +54,7 @@ export function view(state, me) {
   return {
     group: { id: state.group.id, name: state.group.name, code: state.group.code },
     players: state.players,
+    former: state.former || {}, // names of players who have left, for old results
     pendingStakes: state.pendingStakes || {},
     pendingGuesses: hiddenGuesses(state, me),
     startTokens: state.startTokens,
