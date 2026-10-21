@@ -307,7 +307,8 @@
   <section id="setup" class="card hidden" data-tab="play">
     <h2 id="nextWhen">Next match</h2>
     <p class="group-name" id="nextLabel" style="margin:0"></p>
-    <p class="meta" style="margin:2px 0 12px"><span id="setupFor"></span> · <button class="link" id="setupForBtn">change</button> · <button class="link" id="changeMatch">other match</button></p>
+    <p class="meta" style="margin:2px 0 0">Wrong game? <button class="link" id="changeMatch">Pick a different match</button></p>
+    <p class="meta" style="margin:2px 0 12px"><span id="setupFor"></span> · <button class="link" id="setupForBtn">change competition</button></p>
     <h2>Your stake</h2>
     <div class="chips hidden" id="myStake"></div>
     <h2 id="whoTitle" style="margin-top:14px">Who's in</h2>
@@ -749,7 +750,7 @@ function renderComps() {
   $('noComp').classList.toggle('hidden', live || few || !!next);
   $('pickCard').classList.toggle('hidden', !picking);
   $('setup').classList.toggle('hidden', live || few || !next || !state.nextMatch);
-  if (next) $('setupFor').textContent = `For ${next.name}`;
+  if (next) $('setupFor').textContent = `Counts towards ${next.name}`;
   if (picking && fixturesFor == null) loadFixtures();
   const nm = state.nextMatch;
   if (nm) {
