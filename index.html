@@ -68,7 +68,8 @@
   main.has-tabs { padding-bottom: 88px; }
   #game[data-on="play"] [data-tab]:not([data-tab="play"]),
   #game[data-on="table"] [data-tab]:not([data-tab="table"]),
-  #game[data-on="results"] [data-tab]:not([data-tab="results"]) { display: none !important; }
+  #game[data-on="results"] [data-tab]:not([data-tab="results"]),
+  #game[data-on="group"] [data-tab]:not([data-tab="group"]) { display: none !important; }
   .tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); z-index: 5; }
   .tabs button { flex: 1; max-width: 160px; background: transparent; color: var(--muted); border: 1px solid transparent; font-weight: 600; }
   .tabs button.on { color: var(--bg); background: var(--accent); }
@@ -110,11 +111,29 @@
   .group-name { font: 700 26px 'Barlow Condensed', sans-serif; color: var(--text); margin: 0 0 6px; }
   /* Someone new sees only the welcome until they pick their name, then the game opens up. */
   #game.newcomer > :not(#join) { display: none !important; }
+  /* Group tab: one line per setting; "Change" opens just that one underneath. */
+  .line { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .group-name + .line { border-top: 0; }
+  .line .what { flex: 1; min-width: 0; }
+  .line .what b { display: block; font-weight: 600; }
+  .edit { padding: 0 0 12px; }
+  button.switch { width: 52px; min-height: 30px; height: 30px; padding: 0; border-radius: 15px; background: var(--line); border: 0; position: relative; flex: none; }
+  button.switch::after { content: ''; position: absolute; left: 4px; top: 4px; width: 22px; height: 22px; border-radius: 11px; background: var(--soft); transition: left .15s; }
+  button.switch.on { background: var(--accent); }
+  button.switch.on::after { left: 26px; background: var(--bg); }
+  .links { text-align: center; margin: 14px 20px 0; color: var(--muted); }
+  .chips button.plus { font-weight: 700; min-width: 42px; font-size: 18px; }
+  details.choice { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-top: 10px; }
+  details.choice summary { display: block; position: relative; padding-right: 28px; }
+  details.choice summary::after { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
+  details.choice summary b { display: block; font-size: 18px; font-weight: 600; color: var(--text); }
+  details.choice summary .meta { display: block; }
+  details.choice[open] summary { margin-bottom: 10px; }
   .group-block { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
   button.link { background: none; border: 0; padding: 0; min-height: 0; color: var(--accent); font: inherit; text-decoration: underline; }
-  #groups details summary, #otherDay summary, #extras summary { color: var(--soft); justify-content: space-between; }
-  #groups details summary::after, #otherDay summary::after, #extras summary::after { content: '+'; font-size: 22px; color: var(--muted); }
-  #groups details[open] summary::after, #otherDay[open] summary::after, #extras[open] summary::after { content: '−'; }
+  #groups details summary, #groupTab details summary, #otherDay summary, #extras summary { color: var(--soft); justify-content: space-between; }
+  #groups details summary::after, #groupTab details summary::after, #otherDay summary::after, #extras summary::after { content: '+'; font-size: 22px; color: var(--muted); }
+  #groups details[open] summary::after, #groupTab details[open] summary::after, #otherDay[open] summary::after, #extras[open] summary::after { content: '−'; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
@@ -125,12 +144,11 @@
     <div class="row" style="align-items:center">
       <span class="pill hidden" id="livePill">LIVE</span>
       <button class="ghost small" id="howtoBtn" aria-label="How to play">?</button>
-      <button class="ghost small" id="invite">Invite</button>
     </div>
   </header>
   <nav class="chips groupbar hidden" id="groupBar" aria-label="Your groups">
     <span id="groupChips" style="display:contents"></span>
-    <button id="groupBtn" aria-label="Group settings">Groups ▾</button>
+    <button id="groupBtn" class="plus" aria-label="Add a group">+</button>
   </nav>
 
   <p class="meta hidden" id="joiningNote" style="margin:20px">Opening your invite…</p>
@@ -149,79 +167,19 @@
   </section>
 
   <section id="groups" class="card hidden">
-    <div id="groupSettings" class="hidden">
-      <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:6px">
-        <h2 style="margin:0">Your group</h2>
-        <button class="ghost small" id="groupsClose">Done</button>
-      </div>
-      <div class="row" style="align-items:center;margin-bottom:6px">
-        <p class="group-name" id="settingsTitle" style="flex:1;margin:0">This group</p>
-        <button class="ghost small" id="renameBtn">Rename</button>
-      </div>
-      <div class="row" style="align-items:center;margin-bottom:4px">
-        <p style="margin:0;flex:1">Join code <span class="code" id="groupCode"></span></p>
-        <button class="small" id="groupInvite">Send invite</button>
-      </div>
-      <p class="meta" style="margin:0 0 16px">Friends tap your invite link, or type this code.</p>
-      <div id="alertsBox" class="hidden" style="margin-bottom:16px">
-        <h2>Alerts on this phone</h2>
-        <p class="meta" style="margin-top:0" id="alertsNote">Get a buzz when someone puts a stake down or a match kicks off. Nothing is sent between 11pm and 8am.</p>
-        <button id="alertsBtn" class="ghost small">Turn on alerts</button>
-        <div id="teamsBox" class="hidden" style="margin-top:12px">
-          <h2>Teams you follow</h2>
-          <p class="meta" style="margin-top:0">Get one nudge in the morning on days they play, so you can set the match up.</p>
-          <div class="chips" id="teamList"></div>
-        </div>
-      </div>
-      <h2>What do Tokens make!!</h2>
-      <p class="meta" style="margin-top:0">Something to play for between friends, like "10 tokens = 1 pint". The app never takes or pays out money.</p>
-      <div class="row">
-        <input id="labelPer" type="number" min="1" inputmode="numeric" placeholder="10" aria-label="How many tokens" style="flex:none;width:80px">
-        <span style="align-self:center">tokens = 1</span>
-        <input id="labelUnit" placeholder="pint" maxlength="24" aria-label="What they stand for">
-      </div>
-      <div class="row" style="margin-top:8px">
-        <button id="labelSave" class="ghost small">Save</button>
-        <button id="labelClear" class="ghost small hidden">Clear</button>
-      </div>
-      <div id="compCard" class="group-block">
-        <h2>Playing for</h2>
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <h2 id="moreTitle" style="margin:0">Add a group</h2>
+      <button class="ghost small" id="groupsClose">Cancel</button>
+    </div>
+      <details id="joinGroupBox" class="choice">
+        <summary><b>Join with a code</b><span class="meta">A friend sent you a 6-letter code</span></summary>
         <div class="row">
-          <select id="compPick" aria-label="Competition for the next match"></select>
-          <button class="ghost small" id="compEnd">End it</button>
+          <input id="joinCode" placeholder="6-letter code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
+          <button id="joinCodeBtn">Join</button>
         </div>
-        <p class="meta" id="compNote" style="margin-bottom:0"></p>
-        <details id="compNew" style="margin-top:8px">
-          <summary>Start a new competition</summary>
-          <div class="row">
-            <select id="compKind" aria-label="Kind of competition">
-              <option value="tournament">Tournament: a set of days, e.g. one weekend</option>
-              <option value="match">One-off match</option>
-              <option value="season">Season: runs until you end it</option>
-            </select>
-          </div>
-          <div class="row" style="margin-top:8px">
-            <input id="compName" placeholder="Name, e.g. Derby weekend" maxlength="40">
-            <input id="compTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens each" aria-label="Starting tokens each" style="flex:none;width:120px">
-          </div>
-          <div class="row" id="compDates" style="margin-top:8px">
-            <input type="date" id="compFrom" aria-label="First day">
-            <input type="date" id="compTo" aria-label="Last day">
-          </div>
-          <p class="meta" style="margin:8px 0">Every competition has its own tokens, so it never touches the others.</p>
-          <button id="compCreate" style="width:100%">Start it</button>
-        </details>
-      </div>
-    </div>
-    <div id="groupsMine" class="group-block">
-      <h2>Switch group</h2>
-      <ul id="groupList"></ul>
-    </div>
-    <div id="groupsMore" class="group-block">
-      <h2 id="moreTitle">Other groups</h2>
-      <details id="newGroupBox">
-        <summary>Start a new group</summary>
-        <p class="meta" style="margin-top:0">For your mates, your family or the regulars at the pub. You get a link to send them.</p>
+      </details>
+      <details id="newGroupBox" class="choice">
+        <summary><b>Start a new group</b><span class="meta">For your mates, family or the pub. You get a link to send them.</span></summary>
         <div class="row">
           <input id="newGroupName" placeholder="Group name (needed)" maxlength="40" required oninvalid="this.setCustomValidity('Give the group a name')" oninput="this.setCustomValidity('')">
         </div>
@@ -231,15 +189,7 @@
         </div>
         <div class="row" style="margin-top:8px"><button class="big" id="createGroup">Start group</button></div>
       </details>
-      <details id="joinGroupBox">
-        <summary>Join a group with a code</summary>
-        <div class="row">
-          <input id="joinCode" placeholder="6-letter code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
-          <button id="joinCodeBtn">Join</button>
-        </div>
-      </details>
       <p class="tip">Tip: add Corners to your home screen (Share, then Add to Home Screen) so this phone remembers your groups. If you opened the link inside WhatsApp, open it in Safari or Chrome first.</p>
-    </div>
   </section>
 
   <div id="game" class="hidden">
@@ -322,8 +272,8 @@
 
   <section id="noComp" class="card hidden" data-tab="play">
     <h2>Nothing running</h2>
-    <p class="meta" style="margin-top:0">Start a season, a tournament or a one-off match from the group menu.</p>
-    <button id="noCompBtn" style="width:100%">Open the group menu</button>
+    <p class="meta" style="margin-top:0">Start a season, a tournament or a one-off match on the Group tab.</p>
+    <button id="noCompBtn" style="width:100%">Choose what to play for</button>
   </section>
 
   <section id="setup" class="card hidden" data-tab="play">
@@ -395,10 +345,65 @@
     </div>
   </section>
 
+  <section class="card" id="groupTab" data-tab="group">
+    <p class="group-name" id="settingsTitle">This group</p>
+    <div class="line"><div class="what"><b>Invite friends</b><span class="meta">Join code <span class="code" id="groupCode"></span></span></div><button class="small" id="groupInvite">Send invite</button></div>
+    <div class="line"><div class="what"><b>Playing for</b><span class="meta" id="compNote"></span></div><button class="ghost small" data-edit="comp">Change</button></div>
+      <div id="compCard" class="edit hidden">
+        <div class="row">
+          <select id="compPick" aria-label="Competition for the next match"></select>
+          <button class="ghost small" id="compEnd">End it</button>
+        </div>
+                <details id="compNew" style="margin-top:8px">
+          <summary>Start a new competition</summary>
+          <div class="row">
+            <select id="compKind" aria-label="Kind of competition">
+              <option value="tournament">Tournament: a set of days, e.g. one weekend</option>
+              <option value="match">One-off match</option>
+              <option value="season">Season: runs until you end it</option>
+            </select>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <input id="compName" placeholder="Name, e.g. Derby weekend" maxlength="40">
+            <input id="compTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens each" aria-label="Starting tokens each" style="flex:none;width:120px">
+          </div>
+          <div class="row" id="compDates" style="margin-top:8px">
+            <input type="date" id="compFrom" aria-label="First day">
+            <input type="date" id="compTo" aria-label="Last day">
+          </div>
+          <p class="meta" style="margin:8px 0">Every competition has its own tokens, so it never touches the others.</p>
+          <button id="compCreate" style="width:100%">Start it</button>
+        </details>
+      </div>
+    <div class="line"><div class="what"><b>Tokens make</b><span class="meta" id="labelNote"></span></div><button class="ghost small" data-edit="label">Change</button></div>
+    <div id="labelEdit" class="edit hidden">
+      <p class="meta" style="margin-top:0">Something to play for between friends, like "10 tokens = 1 pint". The app never takes or pays out money.</p>
+      <div class="row">
+        <input id="labelPer" type="number" min="1" inputmode="numeric" placeholder="10" aria-label="How many tokens" style="flex:none;width:80px">
+        <span style="align-self:center">tokens = 1</span>
+        <input id="labelUnit" placeholder="pint" maxlength="24" aria-label="What they stand for">
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="labelSave" class="small">Save</button>
+        <button id="labelClear" class="ghost small hidden">Clear</button>
+      </div>
+    </div>
+      <div id="alertsBox" class="hidden">
+        <div class="line"><div class="what"><b>Alerts on this phone</b><span class="meta" id="alertsNote">Stakes, kick-off, your flag and full time. Never 11pm to 8am.</span></div><button id="alertsBtn" class="switch" role="switch" aria-label="Alerts on this phone"></button></div>
+        <div id="teamsBox" class="hidden" style="margin:0 0 12px">
+          <h2>Teams you follow</h2>
+          <p class="meta" style="margin-top:0">Get one nudge in the morning on days they play, so you can set the match up.</p>
+          <div class="chips" id="teamList"></div>
+        </div>
+      </div>
+  </section>
+  <p class="links" data-tab="group"><button class="link" id="renameBtn">Rename group</button> · <button class="link" id="leaveGroup">Leave group</button></p>
+
   <nav class="tabs" id="tabs" aria-label="Sections">
     <button data-show="play" class="on">Play</button>
     <button data-show="table">Table</button>
     <button data-show="results">Results</button>
+    <button data-show="group">Group</button>
   </nav>
   </div>
 
@@ -417,7 +422,7 @@
 let state = null;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const name = (id) => state.players[id]?.name || 'Someone';
+const name = (id) => state.players[id]?.name || state.former?.[id] || 'Someone';
 const compById = (id) => state.competitions.find((c) => c.id === id);
 const bal = (pid, c = compById(state.nextComp)) => c?.table.find((r) => r.id === pid)?.tokens ?? 0;
 const REACTIONS = ['😱', '🍺', '🔥', '😂', '👏', '😤'];
@@ -453,7 +458,8 @@ function renderAlerts() {
   $('alertsBox').classList.toggle('hidden', !state.pushKey);
   const ok = canPush && me && state.players[me];
   $('alertsBtn').classList.toggle('hidden', !ok);
-  $('alertsBtn').textContent = alertsOn() ? `Turn off alerts for ${state.group.name}` : `Turn on alerts for ${state.group.name}`;
+  $('alertsBtn').classList.toggle('on', alertsOn());
+  $('alertsBtn').setAttribute('aria-checked', String(alertsOn()));
   if (!canPush) $('alertsNote').textContent = 'This browser can’t show alerts. On an iPhone, add Corners to your home screen and open it from there.';
   else if (!ok) $('alertsNote').textContent = 'Pick your name in this group first, then you can turn alerts on.';
   $('teamsBox').classList.toggle('hidden', !ok || !alertsOn() || !teams.length);
@@ -639,6 +645,7 @@ let joining = false; // opened from an invite link and still fetching that group
 let lastHolder = null;
 let wasLive = false;
 let showGroups = false;
+let editing = null; // the one Group tab setting open for changing: 'comp' or 'label'
 let me = groupId ? stored('corners-me:' + groupId) : null;
 function setMe(id) {
   me = id;
@@ -666,23 +673,18 @@ function renderGroups() {
   const open = (showGroups || !groupId) && !joining;
   $('joiningNote').classList.toggle('hidden', !joining);
   $('groups').classList.toggle('hidden', !open);
-  // Only the other groups are listed: the open one is the "Your group" block above.
-  const others = groups.filter((g) => g.id !== groupId);
-  $('groupsMine').classList.toggle('hidden', !others.length);
-  $('groupList').innerHTML = others.map((g) =>
-    `<li class="group" data-group="${esc(g.id)}"><span>${esc(g.name)}</span><span class="meta">switch</span></li>`).join('');
-  $('groupSettings').classList.toggle('hidden', !state);
-  // With no group yet, starting or joining one is the whole point, so both stay open and need no divider.
-  $('groupsMore').classList.toggle('group-block', !!state);
-  $('moreTitle').textContent = state ? 'Other groups' : 'Get started';
-  $('newGroupBox').open ||= !state;
-  $('joinGroupBox').open ||= !state;
+  // The + screen only adds a group. With no group yet it's the whole app, so there's nothing to cancel.
+  $('moreTitle').textContent = state ? 'Add a group' : 'Get started';
+  $('groupsClose').classList.toggle('hidden', !state);
   if (state) renderAlerts();
   if (state) {
     $('settingsTitle').textContent = state.group.name;
     $('groupCode').textContent = state.group.code;
     $('labelClear').classList.toggle('hidden', !state.label);
-    if (!document.activeElement?.closest?.('#groupSettings')) {
+    $('labelNote').textContent = state.label ? `${state.label.per} tokens = 1 ${state.label.unit}` : 'Not set yet, e.g. 10 tokens = 1 pint';
+    $('labelEdit').classList.toggle('hidden', editing !== 'label');
+    document.querySelectorAll('[data-edit]').forEach((b) => { b.textContent = editing === b.dataset.edit ? 'Done' : 'Change'; });
+    if (!document.activeElement?.closest?.('#labelEdit')) {
       $('labelPer').value = state.label?.per ?? '';
       $('labelUnit').value = state.label?.unit ?? '';
     }
@@ -691,11 +693,10 @@ function renderGroups() {
   // The home screen shows every group this phone is in, so switching is one tap.
   $('groupBar').classList.toggle('hidden', !state);
   $('groupChips').innerHTML = groups.map((g) =>
-    `<button class="${g.id === groupId ? 'on' : ''}" data-switch="${esc(g.id)}">${esc(g.name)}</button>`).join('');
-  $('groupBtn').textContent = showGroups ? 'Close ▴' : (groups.length > 1 ? 'Groups ▾' : 'Group ▾');
+    `<button class="${g.id === groupId && !showGroups ? 'on' : ''}" data-switch="${esc(g.id)}">${esc(g.name)}</button>`).join('');
+  $('groupBtn').classList.toggle('on', showGroups);
   $('game').classList.toggle('hidden', open || !state);
   document.querySelector('main').classList.toggle('has-tabs', !open && !!state);
-  $('invite').classList.toggle('hidden', !state);
   return !open && state;
 }
 
@@ -704,7 +705,7 @@ function renderComps() {
   const open = state.competitions.filter((c) => c.status === 'open');
   const next = compById(state.nextComp);
   const few = Object.keys(state.players).length < 2;
-  $('compCard').classList.toggle('hidden', live);
+  $('compCard').classList.toggle('hidden', live || editing !== 'comp');
   // Play shows one next step: invite people, start a competition, or set up the match.
   $('inviteCard').classList.toggle('hidden', live || !few);
   $('inviteCode').textContent = state.group.code;
@@ -719,7 +720,7 @@ function renderComps() {
   }
   $('compPick').disabled = open.length < 2;
   $('compEnd').classList.toggle('hidden', !next);
-  $('compNote').textContent = next ? compLine(next) : 'Nothing is running. Start a season, a tournament or a one-off match.';
+  $('compNote').textContent = live ? 'Can change once the live match is over' : next ? (next.name === KIND[next.kind] ? compLine(next) : `${next.name} · ${compLine(next)}`) : 'Nothing yet. Tap Change to start a season, tournament or one-off match.';
   if (!next) $('compNew').open = true;
   $('compDates').classList.toggle('hidden', $('compKind').value !== 'tournament');
 }
@@ -909,10 +910,18 @@ function render() {
   renderBoard(v);
   $('history').innerHTML = (v?.history || []).map((h) => h.abandoned
     ? `<li><span>${esc(h.label)}</span><span class="meta">abandoned, stakes refunded</span></li>`
-    : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corner${h.corners === 1 ? '' : 's'}</span></span><span style="text-align:right">${esc(name(h.winner))} won <b>${h.pot}</b>${h.sidePot
-        ? `<br><span class="meta">Side pot ${h.sidePot}: ${h.guessWinners.map((id) => `${esc(name(id))} (${h.guesses[id].guess})`).join(', ')}</span>` : ''}${h.golden?.winner
-        ? `<br><span class="meta">★ Golden corner ${h.golden.corner}: ${esc(name(h.golden.winner))} +${h.golden.bonus}</span>` : ''}</span></li>`).join('')
+    : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corner${h.corners === 1 ? '' : 's'} · pot ${h.pot}</span></span><span style="text-align:right">${resultLines(h).join('<br>')}</span></li>`).join('')
     || '<li class="meta plain">No matches yet.</li>';
+}
+
+// Who won what in one match, a line per prize, using the names from the day.
+function resultLines(h) {
+  const who = (id) => esc(h.names?.[id] || (state.players[id] || state.former?.[id] ? name(id) : 'A former player'));
+  const bonus = h.golden?.winner ? h.golden.bonus : 0;
+  const lines = [`🚩 ${who(h.winner)} won <b>${h.pot - bonus}</b>`];
+  if (bonus) lines.push(`<span class="meta">★ Golden corner ${h.golden.corner}: ${who(h.golden.winner)} won ${bonus}</span>`);
+  if (h.sidePot) lines.push(`<span class="meta">Side pot ${h.sidePot}: ${h.guessWinners.map((id) => `${who(id)} (guessed ${h.guesses[id].guess})`).join(', ')}</span>`);
+  return lines;
 }
 
 document.addEventListener('click', (e) => {
@@ -957,7 +966,8 @@ $('boardSort').onclick = (e) => {
 };
 $('labelSave').onclick = () => {
   if (!$('labelUnit').value.trim()) { $('err').textContent = 'Say what the tokens make, like pint'; return; }
-  act('setLabel', { per: Number($('labelPer').value || 10), unit: $('labelUnit').value });
+  act('setLabel', { per: Number($('labelPer').value || 10), unit: $('labelUnit').value })
+    .then((ok) => { if (ok) { editing = null; render(); } });
 };
 $('teamList').onclick = (e) => {
   const b = e.target.closest('button[data-team]');
@@ -966,6 +976,17 @@ $('teamList').onclick = (e) => {
   if (mine.has(b.dataset.team)) mine.delete(b.dataset.team); else mine.add(b.dataset.team);
   act('followTeams', { id: me, teams: [...mine] });
 };
+// Leaving only takes the group off this phone: the group, its tokens and its results carry on
+// for everyone else, and the join code brings it back.
+$('leaveGroup').onclick = async () => {
+  if (!state || !confirm(`Leave ${state.group.name}? It comes off this phone. You can rejoin any time with the code ${state.group.code}.`)) return;
+  if (alertsOn()) await act('unsubscribe', { endpoint: stored('corners-alerts:' + groupId) });
+  store('corners-alerts:' + groupId, null);
+  forgetGroup(groupId);
+  if (groups.length) openGroup(groups[0].id);
+  showGroups = !groupId;
+  refresh();
+};
 $('alertsBtn').onclick = () => toggleAlerts().catch((e) => { $('err').textContent = 'Couldn’t set up alerts: ' + e.message; });
 $('labelClear').onclick = () => act('setLabel', { unit: '' });
 
@@ -973,6 +994,9 @@ $('howtoBtn').onclick = () => { showHowto = !showHowto; render(); if (showHowto)
 $('howtoClose').onclick = () => { showHowto = false; store('corners-howto-seen', '1'); render(); };
 
 $('groupBtn').onclick = () => { showGroups = !showGroups; render(); };
+document.querySelectorAll('[data-edit]').forEach((b) => {
+  b.onclick = () => { editing = editing === b.dataset.edit ? null : b.dataset.edit; render(); };
+});
 $('groupsClose').onclick = () => { showGroups = false; render(); };
 $('createGroup').onclick = () => {
   if (!$('newGroupName').value.trim()) {
@@ -995,7 +1019,6 @@ $('joinCodeBtn').onclick = () => {
 $('joinCode').onkeydown = (e) => { if (e.key === 'Enter') $('joinCodeBtn').click(); };
 
 $('groupInvite').onclick = (e) => sendInvite(e.currentTarget);
-$('invite').onclick = (e) => sendInvite(e.currentTarget);
 // Shares the join link, or copies it where sharing isn't available; the tapped button says so.
 async function sendInvite(btn) {
   const url = `${location.origin}/?join=${state.group.code}`;
@@ -1035,6 +1058,7 @@ $('compCreate').onclick = async () => {
   if (!body) return;
   ['compName', 'compTokens'].forEach((id) => { $(id).value = ''; });
   $('compNew').open = false;
+  editing = null;
   viewComp = null;
   const c = compById(body.nextComp);
   if (c?.kind === 'tournament') { $('date').value = c.from; loadFixtures(); }
@@ -1110,7 +1134,8 @@ $('myStake').onclick = (e) => {
   const b = e.target.closest('button[data-stake]');
   if (b) act('setStake', { id: me, stake: b.dataset.stake === '' ? '' : Number(b.dataset.stake) });
 };
-const openMenu = () => { showGroups = true; render(); scrollTo({ top: 0, behavior: 'smooth' }); };
+// "Change" on Play goes to the Group tab with Playing for already open.
+const openMenu = () => { editing = 'comp'; showTab('group'); render(); scrollTo({ top: 0, behavior: 'smooth' }); };
 $('setupForBtn').onclick = openMenu;
 $('noCompBtn').onclick = openMenu;
 $('inviteBig').onclick = (e) => sendInvite(e.currentTarget);

@@ -387,3 +387,15 @@ test('once a player picks their name on a phone, only they can change their stak
   const fresh = g.newGroup('Pub', 100, 'Dee');
   assert.equal(fresh.state.players[fresh.playerId].phone, true); // the creator is on their phone
 });
+
+test('results keep the names of who won, even after they leave the group', () => {
+  const { s, ids } = setup();
+  const [ann, ben] = ids;
+  g.startMatch(s, { fixtureId: '1', stakes: { [ann]: 4, [ben]: 4 } }, noShuffle, 0);
+  g.manualCorner(s, 1);
+  const r = g.settle(s);
+  assert.equal(r.winner, ben);
+  assert.deepEqual(r.names, { [ann]: 'Ann', [ben]: 'Ben' });
+  g.removePlayer(s, ben);
+  assert.equal(s.former[ben], 'Ben');
+});

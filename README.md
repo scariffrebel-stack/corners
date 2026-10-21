@@ -36,13 +36,13 @@ later) and golden corners are counted too. Everything is worked out from the sav
 
 ## What do Tokens make
 
-In the group menu, a group can say what its tokens make, such as "10 tokens = 1 pint". It
+On the Group tab, a group can say what its tokens make, such as "10 tokens = 1 pint". It
 shows beside the pot and how far each player is up or down. It's only for fun between friends:
 the app never sells tokens, takes money or pays anything out.
 
 ## Alerts
 
-Each phone can turn on alerts per group from the group menu. Nobody picks matches one by one:
+Each phone can turn on alerts per group on the Group tab. Nobody picks matches one by one:
 
 - **Game on:** when someone puts the first stake down for the next match, the rest of the group is
   told (at most once every 2 hours), and again when the match kicks off.
