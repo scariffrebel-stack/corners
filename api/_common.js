@@ -62,6 +62,8 @@ export function view(state, me) {
     startTokens: state.startTokens,
     nextComp: state.nextComp,
     label: state.label || null,
+    flat: !!state.flat,
+    terms: state.terms || null,
     stats: {
       all: playerStats(Object.values(state.competitions)),
       byComp: Object.fromEntries(Object.values(state.competitions).map((c) => [c.id, playerStats([c])])),
