@@ -16,6 +16,9 @@ can be in several groups, and the group name under the logo switches between the
 The game that was running before groups existed carries on as the group called "Corners", with
 its players and tokens kept. Phones that had already picked a name open straight into it.
 
+The Group tab lists everyone in the group, who set it up, and who is on the app. Add a mate
+without a phone there, and the organiser can remove a player.
+
 ## Match day
 
 The Match tab walks one step at a time. Someone picks the match once for the whole group, so

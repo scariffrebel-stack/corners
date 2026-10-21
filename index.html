@@ -334,10 +334,6 @@
     <div class="row hidden" id="compViewRow" style="margin-bottom:8px"><select id="compView" aria-label="Show the table for"></select></div>
     <p class="meta hidden" id="compWinners" style="margin-top:0"></p>
     <ul id="table" class="ladder"></ul>
-    <div class="row" style="margin-top:10px">
-      <input id="newName" placeholder="Add a player" maxlength="30">
-      <button id="add">Add</button>
-    </div>
   </section>
 
   <section class="card" data-tab="table">
@@ -369,30 +365,41 @@
     <p class="group-name" id="settingsTitle" style="margin:0">This group</p>
     <p class="meta" id="hostNote" style="margin:0 0 4px"></p>
     <div class="line"><div class="what"><b>Invite friends</b><span class="meta">Join code <span class="code" id="groupCode"></span></span></div><button class="small" id="groupInvite">Send invite</button></div>
+    <div class="line" style="display:block">
+      <b id="membersTitle">Players</b>
+      <ul id="members" class="ladder" style="margin:8px 0 0"></ul>
+      <div class="row" style="margin-top:8px">
+        <input id="newName" placeholder="Add a mate without the app" maxlength="30">
+        <button id="add">Add</button>
+      </div>
+    </div>
     <div class="line"><div class="what"><b>Playing for</b><span class="meta" id="compNote"></span></div><button class="ghost small" data-edit="comp">Change</button></div>
       <div id="compCard" class="edit hidden">
-        <div class="row">
+        <div class="row" id="compPickRow">
           <select id="compPick" aria-label="Competition for the next match"></select>
           <button class="ghost small" id="compEnd">End it</button>
         </div>
                 <details id="compNew" style="margin-top:8px">
-          <summary>Start a new competition</summary>
-          <div class="row">
-            <select id="compKind" aria-label="Kind of competition">
-              <option value="tournament">Tournament: a set of days, e.g. one weekend</option>
-              <option value="match">One-off match</option>
-              <option value="season">Season: runs until you end it</option>
-            </select>
+          <summary id="compNewTitle">Start a new competition</summary>
+          <div class="chips" id="compKind" role="group" aria-label="Kind of competition" style="margin:4px 0 2px">
+            <button data-kind="season" class="on">Season</button>
+            <button data-kind="tournament">Tournament</button>
+            <button data-kind="match">One match</button>
           </div>
-          <div class="row" style="margin-top:8px">
-            <input id="compName" placeholder="Name, e.g. Derby weekend" maxlength="40">
-            <input id="compTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens each" aria-label="Starting tokens each" style="flex:none;width:120px">
+          <p class="meta" id="compKindNote" style="margin:0 0 8px"></p>
+          <div class="row">
+            <input id="compName" placeholder="Name, e.g. 2026/27" maxlength="40">
+          </div>
+          <div class="row" style="margin-top:8px;align-items:center">
+            <label for="compTokens" class="meta" style="flex:none">Everyone starts with</label>
+            <input id="compTokens" type="number" min="1" inputmode="numeric" style="flex:none;width:84px">
+            <span class="meta">tokens</span>
           </div>
           <div class="row" id="compDates" style="margin-top:8px">
             <input type="date" id="compFrom" aria-label="First day">
             <input type="date" id="compTo" aria-label="Last day">
           </div>
-          <p class="meta" style="margin:8px 0">Every competition has its own tokens, so it never touches the others.</p>
+          <p class="meta" style="margin:8px 0">That's each player's own tokens to bet with, not a pot. Each match's stakes make that match's pot. They're kept apart from other competitions, so a tournament never changes the season table.</p>
           <button id="compCreate" style="width:100%">Start it</button>
         </details>
       </div>
@@ -705,6 +712,7 @@ function renderGroups() {
     $('settingsTitle').textContent = state.group.name;
     $('hostNote').textContent = state.host ? (isHost() ? 'You set up this group, so only you can end a competition or remove a player.' : `Set up by ${name(state.host)}, who can end a competition or remove a player.`) : '';
     $('groupCode').textContent = state.group.code;
+    renderMembers();
     $('labelClear').classList.toggle('hidden', !state.label);
     $('labelNote').textContent = state.label ? `${state.label.per} tokens = 1 ${state.label.unit}` : 'Not set yet, e.g. 10 tokens = 1 pint';
     $('labelEdit').classList.toggle('hidden', editing !== 'label');
@@ -754,11 +762,24 @@ function renderComps() {
       `<option value="${esc(c.id)}"${c.id === state.nextComp ? ' selected' : ''}>${esc(c.name)}</option>`).join('')
       || '<option value="">Start a competition below</option>';
   }
-  $('compPick').disabled = open.length < 2;
+  // Only offer the picker when there's a choice to make, and the new-competition form without a heading when there's nothing yet.
+  $('compPick').classList.toggle('hidden', open.length < 2);
   $('compEnd').classList.toggle('hidden', !next || !isHost());
-  $('compNote').textContent = live ? 'Can change once the live match is over' : next ? (next.name === KIND[next.kind] ? compLine(next) : `${next.name} · ${compLine(next)}`) : 'Nothing yet. Tap Change to start a season, tournament or one-off match.';
+  if (next) $('compEnd').textContent = `End this ${KIND[next.kind].toLowerCase()}`;
+  $('compPickRow').classList.toggle('hidden', open.length < 2 && (!next || !isHost()));
+  $('compNewTitle').classList.toggle('hidden', !next);
+  $('compNote').textContent = live ? 'Can change once the live match is over' : next ? (next.name === KIND[next.kind] ? compLine(next) : `${next.name} · ${compLine(next)}`) : editing === 'comp' ? 'Nothing yet. Pick one below.' : 'Nothing yet. Tap Change to start one.';
   if (!next) $('compNew').open = true;
-  $('compDates').classList.toggle('hidden', $('compKind').value !== 'tournament');
+  renderCompKind();
+}
+
+let compKind = 'season';
+function renderCompKind() {
+  if (document.activeElement !== $('compTokens') && !$('compTokens').value) $('compTokens').value = state?.startTokens ?? 100;
+  document.querySelectorAll('#compKind button').forEach((b) => b.classList.toggle('on', b.dataset.kind === compKind));
+  $('compKindNote').textContent = { season: 'Runs until you end it. Most tokens wins.', tournament: 'A few days, like one weekend or a cup run.', match: 'Just one game, over at full time.' }[compKind];
+  $('compDates').classList.toggle('hidden', compKind !== 'tournament');
+  $('compName').placeholder = { tournament: 'Name, e.g. Derby weekend', match: 'Name (optional)', season: 'Name, e.g. 2026/27' }[compKind];
 }
 
 // One-tap stakes for this phone's player: a few round numbers, last match's stake, or sitting out.
@@ -950,7 +971,7 @@ function render() {
   }
   const rows = v ? v.table : [];
   $('table').innerHTML = rows.map(({ id, tokens }, i) =>
-    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}<br>${upDown(tokens, v.startTokens)}</span><span><span class="tok">${tokens}</span>${v.status === 'open' && isHost() && id !== state.host ? ` <button class="ghost small" data-remove="${id}" title="Remove">✕</button>` : ''}</span></li>`).join('')
+    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}<br>${upDown(tokens, v.startTokens)}</span><span class="tok">${tokens}</span></li>`).join('')
     || '<li class="meta plain">No players yet.</li>';
 
   renderBoard(v);
@@ -958,6 +979,17 @@ function render() {
     ? `<li><span>${esc(h.label)}</span><span class="meta">abandoned, stakes refunded</span></li>`
     : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corner${h.corners === 1 ? '' : 's'} · pot ${h.pot}</span></span><span style="text-align:right">${resultLines(h).join('<br>')}</span></li>`).join('')
     || '<li class="meta plain">No matches yet.</li>';
+}
+
+// The Group tab's player list: who's in, who's on a phone, and remove for the organiser.
+function renderMembers() {
+  const ids = Object.keys(state.players).sort((a, b) => (b === state.host) - (a === state.host));
+  $('membersTitle').textContent = `Players · ${ids.length}`;
+  $('members').innerHTML = ids.map((id) => {
+    const tags = [id === state.host && 'organiser', state.players[id].phone ? 'on the app' : 'not on the app yet'].filter(Boolean).join(' · ');
+    const remove = isHost() && id !== state.host && !state.match?.order.includes(id);
+    return `<li><span>${esc(name(id))}${id === me ? ' (you)' : ''}<br><span class="meta">${tags}</span></span>${remove ? `<button class="ghost small" data-remove="${id}" aria-label="Remove ${esc(name(id))}">Remove</button>` : ''}</li>`;
+  }).join('');
 }
 
 // Who won what in one match, a line per prize, using the names from the day.
@@ -1093,13 +1125,12 @@ $('guessSave').onclick = () => {
 
 $('compPick').onchange = () => act('setNextComp', { id: $('compPick').value });
 $('compView').onchange = () => { viewComp = $('compView').value; render(); };
-$('compKind').onchange = () => {
-  $('compDates').classList.toggle('hidden', $('compKind').value !== 'tournament');
-  $('compName').placeholder = { tournament: 'Name, e.g. Derby weekend', match: 'Name (optional)', season: 'Name, e.g. 2026/27' }[$('compKind').value];
-};
+document.querySelectorAll('#compKind button').forEach((b) => {
+  b.onclick = () => { compKind = b.dataset.kind; renderCompKind(); };
+});
 $('compCreate').onclick = async () => {
   const body = await act('createCompetition', {
-    kind: $('compKind').value, name: $('compName').value, startTokens: $('compTokens').value,
+    kind: compKind, name: $('compName').value, startTokens: $('compTokens').value,
     from: $('compFrom').value, to: $('compTo').value,
   });
   if (!body) return;
