@@ -456,3 +456,45 @@ test('the group picks its next match once, and starting plays that one', () => {
   g.pickMatch(s, {}); // pick again
   assert.equal(s.nextMatch, null);
 });
+
+test('one stake for everyone: players say they are in, and nobody runs out of tokens', () => {
+  const { s, ids } = setup();
+  g.setTerms(s, '  £5   each ');
+  assert.equal(s.terms, '£5 each');
+  g.setIn(s, ids[0], true);
+  g.setIn(s, ids[1], true);
+  g.setIn(s, ids[2], true);
+  g.setIn(s, ids[2], false);
+  assert.deepEqual(Object.keys(s.pendingStakes).sort(), [ids[0], ids[1]].sort());
+  // Even someone who has lost every match so far can always play.
+  s.competitions[s.nextComp].balances[ids[0]] = 0;
+  g.startMatch(s, { fixtureId: '1' }, noShuffle);
+  assert.equal(s.match.terms, '£5 each');
+  assert.equal(s.match.order.length, 2);
+  const r = g.applyFeed(s, { corners: 1, status: 'FT' });
+  assert.equal(r.winner, ids[1]);
+  assert.equal(r.terms, '£5 each');
+  assert.equal(r.flat, true);
+});
+
+test('only your own phone puts you in, but anyone can for a mate without the app', () => {
+  const { s, ids } = setup();
+  g.claim(s, ids[1]);
+  assert.throws(() => g.setIn(s, ids[1], true, ids[0]), /Only Ben/);
+  g.setIn(s, ids[2], true, ids[0]);
+  assert.equal(s.pendingStakes[ids[2]], 1);
+  g.setTerms(s, '');
+  assert.equal(s.terms, null);
+});
+
+test('saying you are in starts a season if every competition has finished', () => {
+  const { s, ids } = setup(['Ann', 'Ben']);
+  g.endCompetition(s, s.nextComp);
+  assert.equal(s.nextComp, null);
+  g.setIn(s, ids[0], true);
+  g.setIn(s, ids[1], true);
+  assert.ok(s.nextComp);
+  g.startMatch(s, { fixtureId: '1' }, noShuffle);
+  assert.throws(() => g.setIn(s, ids[0], false), /live match/);
+  assert.throws(() => g.setTerms(s, 'x'), /live match/);
+});

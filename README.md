@@ -1,79 +1,57 @@
 # Corners
 
-A game for friends watching the Premier League. Each player stakes their own tokens, a
-random player starts with the Corner flag, and the flag passes along the order every
-time either team gets a corner. Whoever holds it at full time takes the whole pot.
+A game for friends watching the Premier League. Like in the pub, everyone puts in the same
+stake, a random player starts with the Corner flag, and the flag passes along the order every
+time either team gets a corner. Whoever holds it at full time takes the pot.
 
-## Groups
+The stake is whatever the players agree, typed in as text: "£5 each", "losers buy a round" or
+"bragging rights". Corners only shows it. It never takes, holds or pays out money; you settle up
+between yourselves.
 
-Anyone can start their own group from the home screen: give it a name, your name, and how many
-tokens everyone starts with. Each group has its own players, tokens, matches and results.
-Until a second player joins, the Match tab is just the invite: send the join link, or read out
-the 6-letter code, and watch names appear as mates join. A mate opening the link only sees names
-not already picked on another phone. The same phone
-can be in several groups, and the group name under the logo switches between them.
-
-The game that was running before groups existed carries on as the group called "Corners", with
-its players and tokens kept. Phones that had already picked a name open straight into it.
-
-The Group tab lists everyone in the group, who set it up, and who is on the app. Add a mate
-without a phone there, and the organiser can remove a player.
+The earlier version, with tokens, competitions, side pots and golden corners, is kept on the
+`classic` branch (tag `classic-v1`).
 
 ## Match day
 
-The Match tab walks one step at a time. Someone picks the match once for the whole group, so
-every phone shows the same fixture. Then everyone sets their own stake, and "Who's in" shows who
-has staked and the pot. Once two players are in, **Shuffle and start** goes live. At full time,
-after the winner, **See the table** shows the new positions, and the Match tab is ready to pick
-the next one. The three tabs are Match, Table (with recent results under
-the table) and Group.
+1. **Start a game:** put in your name. The game is called after you, like "Alex's game", and can be renamed.
+2. **Pick the match** from today's fixtures, another day, or a test match.
+3. **Agree the stake**, the same for everyone. It carries over to the next match, so later games skip this step.
+4. **Send your mates the link** (or read out the 6-letter code). A mate opening it sees who asked them,
+   the match and the stake, taps their name, and is in.
+5. **Who's in** shows everyone. You put yourself in or sit out from your own phone; a mate without a
+   phone can be added and put in by anyone. Once two are in, **Draw the order and start** goes live.
+6. At full time every phone shows who takes the pot, the stake, and who settles up.
 
-## Competitions
+## Groups
 
-Every match is played for a competition, and each competition has its own tokens:
+Everyone who has played together stays together as a group, so the next match is just pick, share
+and play. The same phone can be in several groups, and the chips under the logo switch between
+them. The Group tab lists the players, who set it up (only they can remove a player), the join
+code, alerts and teams you follow.
 
-- **Season:** runs until the organiser ends it, then you start a new one under **Playing for**. Most tokens at the end wins.
-- **Tournament:** a run of days, such as one weekend or a cup run. Only matches on those days count,
-  and it ends by itself after the last day.
-- **One-off match:** a single game with its own tokens, over at full time.
+## The table
 
-A tournament or one-off match never touches the season's tokens. Pick what the next match is for under
-**Playing for**, and look back at any competition's final table from the table card. A group from
-before competitions carries on as its first season, with every balance and result kept.
-
-## Leaderboards and running totals
-
-Under **More stats** on the Table, the leaderboard ranks players for the competition you're looking at, or for all time across every
-competition in the group: win rate, flags won, best corner guesser and streaks, with
-each player's last five results. Late steals (the flag reaching the winner in the 90th minute or
-later) and golden corners are counted too. Everything is worked out from the saved results.
-
-## What do Tokens make
-
-Tokens are just the score, so each competition says what they make: "20 tokens = 1 coffee" for a
-one-off match, or "50 tokens = 1 lunch" for a season. Set it when you start a competition (it
-suggests the last one), or change it for the next competition under **Tokens make** on the Group
-tab. It shows beside the pot and how far each player is up or down. It's only for fun between friends:
-the app never sells tokens, takes money or pays anything out.
+Once a group has played three matches, a Table tab appears: pots won, games played and recent
+results, with win rate and streaks under **More stats**. Everything is worked out from the saved
+results.
 
 ## Chat and the host
 
 During a match everyone can tap a reaction or send a short line (up to 80 characters), shown with
-their name. The person who set up a group is its host: only they can end a competition, start a
-new season or remove a player, since none of those can be undone. Groups from before this keep
+their name. The person who set up a group is its host: only they can remove a player, since that
+can't be undone. Groups from before this keep
 their first player as host.
 
 ## Alerts
 
 Each phone can turn on alerts per group on the Group tab. Nobody picks matches one by one:
 
-- **Game on:** when someone puts the first stake down for the next match, the rest of the group is
+- **Game on:** when the first person says they're in for the next match, the rest of the group is
   told (at most once every 2 hours), and again when the match kicks off.
 - **During the match:** your phone buzzes when the flag lands on you ("You've got the flag!"), and
   everyone hears the result at full time. The feed is checked while anyone in the group has the app
   open, so these come as long as one of you is watching in the app.
 - **Teams you follow:** pick teams once. On days they play, you get one nudge at about 10am.
-  A tournament's match days get the same morning nudge.
 - Nothing is sent between 11pm and 8am (UK time). On iPhone, alerts only work once Corners has been
   added to the home screen and opened from there.
 
@@ -82,19 +60,13 @@ alerts section stays hidden.
 
 ## Rules
 
-1. Everyone starts the season with the same tokens (100 unless you pick another amount when you start it). Most tokens at the end of the season wins.
-2. Each player picks their own stake for a match on their own phone, from 1 token up to their balance. No stake means sitting it out. Once you have picked your name on a phone, nobody else can change your stake; a friend at the table without the app can have theirs typed in for them.
+1. Everyone in puts in the same stake, agreed as text before the match. Sitting out is fine.
+2. Your own phone says whether you're in. A friend at the table without the app can be put in by anyone.
 3. At the start the order is shuffled and the first player in it holds the flag.
 4. Every corner to either team, stoppage time included, moves the flag one place along.
 5. The flag holder at full time wins the pot. No corners means the starter wins.
 6. If the live feed takes a corner back, the flag moves back too.
-7. An abandoned or postponed match refunds every stake.
-
-### Golden corner
-
-Optional, ticked when starting a match. A secret corner from 1 to 12 is picked at random. Whoever the
-flag goes to on that corner takes a quarter of the pot at full time, and the holder gets the rest.
-The number shows once it's been taken. If the match never gets that many corners, the holder takes it all.
+7. An abandoned or postponed match has no winner.
 
 ### During the match
 
@@ -104,19 +76,10 @@ The number shows once it's been taken. If the match never gets that many corners
   it again. At full time the feed's count wins, so a corner called by mistake that the feed never saw is dropped.
 - When the flag changes hands, every phone flashes the new holder's name full screen and buzzes
   (on phones that allow it). Landing on you gets the loudest version.
-- At full time every phone shows who won, the tokens, any golden corner or side pot, and the top of the table.
+- At full time every phone shows who takes the pot, the stake, and who settles up.
 - The match log lists every corner with its minute, whose corner it was, and who the flag went to.
   A corner the feed takes back gets its own line.
 - Tap a reaction (😱 🍺 🔥 😂 👏 😤) to let everyone else watching see it.
-
-### Side pot: guess the corners
-
-Optional, alongside the flag game, and open to players who sit the flag game out.
-
-1. Before the match, guess the total corners and stake tokens on it. Your flag stake and your guess stake both come out of the same balance.
-2. Each phone sees only its own guess. Everyone's guesses are revealed when the match starts, and they're locked from then on.
-3. At full time the closest guess takes the whole side pot. A tie splits it, with any odd token going to whoever guessed first.
-4. The side pot needs at least two guesses. A lone guess is dropped and costs nothing. An abandoned match refunds the side pot too.
 
 ## How it works
 
@@ -126,7 +89,7 @@ Optional, alongside the flag game, and open to players who sit the flag game out
 - The flag holder is worked out from the total, so corrections in the feed fix themselves.
 - If the feed is wrong or stuck, the backup controls let you add or remove a corner, end the match, or abandon it.
   A corner added there is a correction that stays at full time; removing one takes back a called corner first.
-- Each group's state (players, tokens, the live match, results) is kept in Upstash Redis, one key per group.
+- Each group's state (players, the stake, the live match, results) is kept in Upstash Redis, one key per group.
 
 ## Set it up (free)
 

@@ -9,7 +9,9 @@ test('a new group starts with its creator as the only player', () => {
   assert.equal(state.startTokens, 50);
   assert.deepEqual(state.players, { [playerId]: { name: 'Ann', phone: true } });
   assert.equal(g.balance(state, playerId), 50);
-  assert.throws(() => g.newGroup('', 50, 'Ann'), g.GameError);
+  assert.equal(g.newGroup('', 50, 'Ann').name, "Ann's game"); // a game needs no name of its own
+  assert.equal(g.newGroup('', 50, 'Ann').state.flat, true);
+  assert.throws(() => g.newGroup('', 50, ''), g.GameError);
   assert.throws(() => g.newGroup('Pub', 0, 'Ann'), g.GameError);
   assert.throws(() => g.newGroup('Pub', 50, ''), g.GameError);
   assert.equal(g.newGroup('Pub', '', 'Ann').state.startTokens, g.START_TOKENS);
