@@ -23,8 +23,9 @@ without a phone there, and the organiser can remove a player.
 
 The Match tab walks one step at a time. Someone picks the match once for the whole group, so
 every phone shows the same fixture. Then everyone sets their own stake, and "Who's in" shows who
-has staked and the pot. Once two players are in, **Shuffle and start** goes live. At full time
-**Next match** goes back to picking. The three tabs are Match, Table (with recent results under
+has staked and the pot. Once two players are in, **Shuffle and start** goes live. At full time,
+after the winner, **See the table** shows the new positions, and the Match tab is ready to pick
+the next one. The three tabs are Match, Table (with recent results under
 the table) and Group.
 
 ## Competitions
