@@ -371,22 +371,21 @@
     <div class="line"><div class="what"><b>Invite friends</b><span class="meta">Join code <span class="code" id="groupCode"></span></span></div><button class="small" id="groupInvite">Send invite</button></div>
     <div class="line"><div class="what"><b>Playing for</b><span class="meta" id="compNote"></span></div><button class="ghost small" data-edit="comp">Change</button></div>
       <div id="compCard" class="edit hidden">
-        <div class="row">
+        <div class="row" id="compPickRow">
           <select id="compPick" aria-label="Competition for the next match"></select>
           <button class="ghost small" id="compEnd">End it</button>
         </div>
                 <details id="compNew" style="margin-top:8px">
-          <summary>Start a new competition</summary>
-          <div class="row">
-            <select id="compKind" aria-label="Kind of competition">
-              <option value="tournament">Tournament: a set of days, e.g. one weekend</option>
-              <option value="match">One-off match</option>
-              <option value="season">Season: runs until you end it</option>
-            </select>
+          <summary id="compNewTitle">Start a new competition</summary>
+          <div class="chips" id="compKind" role="group" aria-label="Kind of competition" style="margin:4px 0 2px">
+            <button data-kind="season" class="on">Season</button>
+            <button data-kind="tournament">Tournament</button>
+            <button data-kind="match">One match</button>
           </div>
-          <div class="row" style="margin-top:8px">
-            <input id="compName" placeholder="Name, e.g. Derby weekend" maxlength="40">
-            <input id="compTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens each" aria-label="Starting tokens each" style="flex:none;width:120px">
+          <p class="meta" id="compKindNote" style="margin:0 0 8px"></p>
+          <div class="row">
+            <input id="compName" placeholder="Name, e.g. 2026/27" maxlength="40">
+            <input id="compTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens" aria-label="Starting tokens each" style="flex:none;width:96px">
           </div>
           <div class="row" id="compDates" style="margin-top:8px">
             <input type="date" id="compFrom" aria-label="First day">
@@ -754,11 +753,23 @@ function renderComps() {
       `<option value="${esc(c.id)}"${c.id === state.nextComp ? ' selected' : ''}>${esc(c.name)}</option>`).join('')
       || '<option value="">Start a competition below</option>';
   }
-  $('compPick').disabled = open.length < 2;
+  // Only offer the picker when there's a choice to make, and the new-competition form without a heading when there's nothing yet.
+  $('compPick').classList.toggle('hidden', open.length < 2);
   $('compEnd').classList.toggle('hidden', !next || !isHost());
-  $('compNote').textContent = live ? 'Can change once the live match is over' : next ? (next.name === KIND[next.kind] ? compLine(next) : `${next.name} · ${compLine(next)}`) : 'Nothing yet. Tap Change to start a season, tournament or one-off match.';
+  if (next) $('compEnd').textContent = `End this ${KIND[next.kind].toLowerCase()}`;
+  $('compPickRow').classList.toggle('hidden', open.length < 2 && (!next || !isHost()));
+  $('compNewTitle').classList.toggle('hidden', !next);
+  $('compNote').textContent = live ? 'Can change once the live match is over' : next ? (next.name === KIND[next.kind] ? compLine(next) : `${next.name} · ${compLine(next)}`) : editing === 'comp' ? 'Nothing yet. Pick one below.' : 'Nothing yet. Tap Change to start one.';
   if (!next) $('compNew').open = true;
-  $('compDates').classList.toggle('hidden', $('compKind').value !== 'tournament');
+  renderCompKind();
+}
+
+let compKind = 'season';
+function renderCompKind() {
+  document.querySelectorAll('#compKind button').forEach((b) => b.classList.toggle('on', b.dataset.kind === compKind));
+  $('compKindNote').textContent = { season: 'Runs until you end it. Most tokens wins.', tournament: 'A few days, like one weekend or a cup run.', match: 'Just one game, over at full time.' }[compKind];
+  $('compDates').classList.toggle('hidden', compKind !== 'tournament');
+  $('compName').placeholder = { tournament: 'Name, e.g. Derby weekend', match: 'Name (optional)', season: 'Name, e.g. 2026/27' }[compKind];
 }
 
 // One-tap stakes for this phone's player: a few round numbers, last match's stake, or sitting out.
@@ -1093,13 +1104,12 @@ $('guessSave').onclick = () => {
 
 $('compPick').onchange = () => act('setNextComp', { id: $('compPick').value });
 $('compView').onchange = () => { viewComp = $('compView').value; render(); };
-$('compKind').onchange = () => {
-  $('compDates').classList.toggle('hidden', $('compKind').value !== 'tournament');
-  $('compName').placeholder = { tournament: 'Name, e.g. Derby weekend', match: 'Name (optional)', season: 'Name, e.g. 2026/27' }[$('compKind').value];
-};
+document.querySelectorAll('#compKind button').forEach((b) => {
+  b.onclick = () => { compKind = b.dataset.kind; renderCompKind(); };
+});
 $('compCreate').onclick = async () => {
   const body = await act('createCompetition', {
-    kind: $('compKind').value, name: $('compName').value, startTokens: $('compTokens').value,
+    kind: compKind, name: $('compName').value, startTokens: $('compTokens').value,
     from: $('compFrom').value, to: $('compTo').value,
   });
   if (!body) return;
