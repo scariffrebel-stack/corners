@@ -76,7 +76,7 @@
   .fixtures { display: grid; gap: 8px; margin: 0 0 8px; }
   .fixtures li { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
   .fixtures li.on { outline: 2px solid var(--accent); }
-  .err { color: var(--bad); font-size: 14px; margin: 16px 20px 0; }
+  .err { position: fixed; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 20; background: var(--deep); border: 1px solid var(--bad); border-radius: 12px; padding: 12px 14px; color: var(--bad); font-size: 15px; box-shadow: 0 6px 20px rgba(0,0,0,.4); }
   .err:empty { display: none; }
   .warn { color: var(--accent); }
   .hidden { display: none !important; }
@@ -885,8 +885,7 @@ function render() {
     $('guessSave').textContent = mine ? 'Change guess' : 'Lock in guess';
     $('guessList').innerHTML = Object.entries(state.pendingGuesses).map(([id, g]) =>
       `<li><span>${esc(name(id))}${id === me ? ` (you) · <b>${g.guess}</b>` : ' · guessed'}</span><span class="meta">${g.stake} tokens${id === me ? ` <button class="ghost small" id="guessClear">Withdraw</button>` : ''}</span></li>`).join('');
-    const staked = Object.keys(state.pendingStakes).length;
-    $('start').textContent = staked >= 2 ? `Shuffle and start · ${staked} in` : 'Shuffle and start';
+    renderStart();
   }
 
   const known = me && state.players[me];
@@ -1130,7 +1129,14 @@ function renderFixtures() {
   $('fixtureList').innerHTML = fixtures == null ? '<li class="meta plain">Loading matches…</li>'
     : list.length ? list.map((f) => `<li data-fixture="${esc(f.id)}" class="${picked?.id === f.id ? 'on' : ''}"><span>${esc(f.label)}</span><span class="meta">${when(f)}</span></li>`).join('')
     : `<li class="meta plain">No Premier League matches ${day === today() ? 'today' : 'that day'}. Pick another day below.</li>`;
-  $('start').disabled = !picked;
+  renderStart();
+}
+// The Start button says what it's waiting for, so pressing it never does nothing.
+function renderStart() {
+  const staked = Object.keys(state?.pendingStakes || {}).length;
+  $('start').disabled = !picked || staked < 2;
+  $('start').textContent = !picked ? 'Pick a match above'
+    : staked < 2 ? `Needs 2 stakes · ${staked} in` : `Shuffle and start · ${staked} in`;
 }
 
 $('fixtureList').onclick = (e) => {
@@ -1169,6 +1175,14 @@ $('start').onclick = () => {
   act('startMatch', { fixtureId: picked.id, label: picked.label, kickoff: picked.kickoff, golden: $('golden').checked })
     .then((ok) => { if (ok) { picked = null; renderFixtures(); } });
 };
+
+// Errors pop up above the tabs and clear themselves after a few seconds, or with a tap.
+let errTimer = null;
+new MutationObserver(() => {
+  clearTimeout(errTimer);
+  if ($('err').textContent) errTimer = setTimeout(() => { $('err').textContent = ''; }, 6000);
+}).observe($('err'), { childList: true, characterData: true, subtree: true });
+$('err').onclick = () => { $('err').textContent = ''; };
 
 // Bottom tabs. Play is where everything starts; a match going live brings you back to it.
 let tab = 'play';
