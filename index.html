@@ -917,8 +917,9 @@ function render() {
     $('reacts').innerHTML = recent.map((r) => r.text
       ? `<span class="said"><b>${esc(r.id === me ? 'You' : name(r.id))}</b> ${esc(r.text)}</span>`
       : `<span>${esc(name(r.id))} ${r.emoji}</span>`).join('');
-    const log = [...(m.log || [])].reverse();
-    $('matchLog').innerHTML = log.map((e) => {
+    // In order from kick-off: the flag starts with the first player drawn, and corner 1 passes it on.
+    const log = m.log || [];
+    $('matchLog').innerHTML = `<li><span>Start · drawn at random</span><span class="meta">flag with ${esc(name(m.order[0]))}</span></li>` + log.map((e) => {
       const when = e.minute ? `${esc(e.minute)} · ` : '';
       const gold = gd && !gd.secret && !e.back && e.n === gd.corner ? ' <span class="gold">★ golden</span>' : '';
       const how = e.by ? ` <span class="meta">(called by ${esc(e.by === me ? 'you' : name(e.by))})</span>`
@@ -926,7 +927,7 @@ function render() {
       return e.back
         ? `<li><span>${when}Corner taken back${how}</span><span class="meta">flag back to ${esc(name(e.holder))}</span></li>`
         : `<li><span>${when}Corner ${e.n}${e.team ? ` · ${esc(e.team)}` : ''}${gold}${how}</span><span class="meta">flag to ${esc(name(e.holder))}</span></li>`;
-    }).join('') || '<li class="meta plain">No corners yet.</li>';
+    }).join('');
     $('order').innerHTML = m.order.map((id, i) =>
       `<li class="${id === m.holder ? 'holder' : ''}"><span>${i + 1} · ${esc(name(id))}</span><span class="meta">${m.stakes[id]}</span></li>`).join('');
   } else {
