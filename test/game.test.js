@@ -422,3 +422,20 @@ test('a short line said during the match shows with the reactions', () => {
   assert.deepEqual(s.match.reactions.map((r) => r.text.length), [13, 80]);
   assert.equal(s.match.reactions[0].text, 'what a corner');
 });
+
+test('the group picks its next match once, and starting plays that one', () => {
+  const { s, ids } = setup();
+  g.pickMatch(s, { fixtureId: '99', label: 'Arsenal v Chelsea', kickoff: '2026-10-21T19:00:00Z' });
+  assert.equal(s.nextMatch.label, 'Arsenal v Chelsea');
+  g.setStake(s, ids[0], 5);
+  g.setStake(s, ids[1], 5);
+  g.startMatch(s, {}, noShuffle, 0);
+  assert.equal(s.match.fixtureId, '99');
+  assert.equal(s.match.label, 'Arsenal v Chelsea');
+  assert.equal(s.nextMatch, null);
+  assert.throws(() => g.pickMatch(s, { fixtureId: '1' }), /live match/);
+  g.abandon(s);
+  g.pickMatch(s, { fixtureId: '2', label: 'Leeds v Hull' });
+  g.pickMatch(s, {}); // pick again
+  assert.equal(s.nextMatch, null);
+});

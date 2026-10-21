@@ -58,6 +58,7 @@
   li.holder .meta { color: var(--bg); }
   button, input, select { font: inherit; border-radius: 10px; border: 1px solid var(--line); min-height: 44px; padding: 10px 12px; background: var(--bg); color: var(--text); }
   button { background: var(--accent); color: var(--bg); border: 0; font-weight: 700; cursor: pointer; }
+  button:disabled { opacity: .45; cursor: default; }
   button.big { width: 100%; font: 800 20px 'Barlow Condensed', sans-serif; letter-spacing: .06em; text-transform: uppercase; }
   button.ghost { background: transparent; color: var(--soft); border: 1px solid var(--line); font-weight: 500; }
   button.small { min-height: 36px; padding: 4px 10px; font-size: 14px; }
@@ -68,7 +69,6 @@
   main.has-tabs { padding-bottom: 88px; }
   #game[data-on="play"] [data-tab]:not([data-tab="play"]),
   #game[data-on="table"] [data-tab]:not([data-tab="table"]),
-  #game[data-on="results"] [data-tab]:not([data-tab="results"]),
   #game[data-on="group"] [data-tab]:not([data-tab="group"]) { display: none !important; }
   .tabs { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 6px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); z-index: 5; }
   .tabs button { flex: 1; max-width: 160px; background: transparent; color: var(--muted); border: 1px solid transparent; font-weight: 600; }
@@ -172,25 +172,31 @@
       <h2 id="moreTitle" style="margin:0">Add a group</h2>
       <button class="ghost small" id="groupsClose">Cancel</button>
     </div>
-      <details id="joinGroupBox" class="choice">
-        <summary><b>Join with a code</b><span class="meta">A friend sent you a 6-letter code</span></summary>
-        <div class="row">
-          <input id="joinCode" placeholder="6-letter code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
-          <button id="joinCodeBtn">Join</button>
-        </div>
-      </details>
+    <div id="welcome" class="hidden">
+      <p class="group-name" style="margin:14px 0 4px">Hold the flag at full time</p>
+      <p class="meta" style="margin:0">Every corner passes the flag on. Whoever has it when the ref blows wins the pot. A game for mates watching the football.</p>
+    </div>
       <details id="newGroupBox" class="choice">
-        <summary><b>Start a new group</b><span class="meta">For your mates, family or the pub. You get a link to send them.</span></summary>
+        <summary><b>Start a group</b><span class="meta">For your mates, family or the pub. You get a link to send them.</span></summary>
         <div class="row">
           <input id="newGroupName" placeholder="Group name (needed)" maxlength="40" required oninvalid="this.setCustomValidity('Give the group a name')" oninput="this.setCustomValidity('')">
         </div>
         <div class="row" style="margin-top:8px">
           <input id="newGroupMe" placeholder="Your name" maxlength="30" autocomplete="given-name">
-          <input id="newGroupTokens" type="number" min="1" inputmode="numeric" placeholder="Tokens (100)" aria-label="Starting tokens each">
+          <input id="newGroupTokens" class="hidden" type="number" min="1" inputmode="numeric" placeholder="Tokens (100)" aria-label="Starting tokens each">
         </div>
+        <p class="meta" style="margin:6px 0 0">Everyone starts with 100 tokens.</p>
         <div class="row" style="margin-top:8px"><button class="big" id="createGroup">Start group</button></div>
       </details>
+      <details id="joinGroupBox" class="choice">
+        <summary><b>I've got an invite code</b><span class="meta">A mate sent you a 6-letter code</span></summary>
+        <div class="row">
+          <input id="joinCode" placeholder="6-letter code" maxlength="8" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase">
+          <button id="joinCodeBtn">Join</button>
+        </div>
+      </details>
       <p class="tip">Tip: add Corners to your home screen (Share, then Add to Home Screen) so this phone remembers your groups. If you opened the link inside WhatsApp, open it in Safari or Chrome first.</p>
+      <p style="text-align:center;margin:12px 0 0"><button class="link" id="howtoLink">How to play</button></p>
   </section>
 
   <div id="game" class="hidden">
@@ -265,10 +271,11 @@
 
 
   <section id="inviteCard" class="card hidden" data-tab="play">
-    <h2>Invite your friends</h2>
-    <p class="meta" style="margin-top:0">You need at least two players. Send the link to the group chat, or read out the code <span class="code" id="inviteCode"></span>.</p>
-    <button class="big" id="inviteBig" style="width:100%">Send invite</button>
-    <p class="meta" style="margin:14px 0 6px">Friend with you who hasn't got a phone handy? Add them here.</p>
+    <h2>Invite your mates</h2>
+    <button class="big" id="inviteBig" style="width:100%">Send invite link</button>
+    <p class="meta" style="text-align:center;margin:8px 0 12px">or read out the code <span class="code" id="inviteCode"></span></p>
+    <ul id="inviteWho"></ul>
+    <p class="meta" style="margin:12px 0 6px">With a mate who isn't on the app? Add them by name.</p>
     <div class="row">
       <input id="quickName" placeholder="Their name" maxlength="30">
       <button id="quickAdd">Add</button>
@@ -281,9 +288,8 @@
     <button id="noCompBtn" style="width:100%">Choose what to play for</button>
   </section>
 
-  <section id="setup" class="card hidden" data-tab="play">
-    <h2>New match</h2>
-    <p class="meta" style="margin-top:0"><span id="setupFor"></span> · <button class="link" id="setupForBtn">change</button></p>
+  <section id="pickCard" class="card hidden" data-tab="play">
+    <h2>Which match?</h2>
     <p class="meta" style="margin:0 0 6px" id="fixturesDay">Today's matches</p>
     <ul id="fixtureList" class="fixtures"></ul>
     <select id="fixture" class="hidden" aria-hidden="true"></select>
@@ -294,10 +300,19 @@
         <button class="ghost small" id="testMatch">Test match</button>
       </div>
     </details>
-    <h2 style="margin-top:14px">Stakes</h2>
+    <button class="big" id="pickBtn" style="width:100%;margin-top:12px">Play this one</button>
+    <p class="meta" style="margin:8px 0 0;text-align:center">Everyone in the group gets the same match.</p>
+  </section>
+
+  <section id="setup" class="card hidden" data-tab="play">
+    <h2 id="nextWhen">Next match</h2>
+    <p class="group-name" id="nextLabel" style="margin:0"></p>
+    <p class="meta" style="margin:2px 0 12px"><span id="setupFor"></span> · <button class="link" id="setupForBtn">change</button> · <button class="link" id="changeMatch">other match</button></p>
+    <h2>Your stake</h2>
     <div class="chips hidden" id="myStake"></div>
-    <p class="meta" style="margin-top:0" id="stakeNote">Tap your stake. Only you can change yours. You can type one in for a friend at the table who isn't using the app.</p>
+    <h2 id="whoTitle" style="margin-top:14px">Who's in</h2>
     <ul id="stakes"></ul>
+    <p class="meta" style="margin:6px 0 0" id="stakeNote">Only you can change your stake. A mate without the app can have theirs typed in.</p>
     <div class="row" style="margin-top:12px"><button class="big" id="start">Shuffle and start</button></div>
     <details id="extras" style="margin-top:8px">
       <summary>Extras: side pot and golden corner</summary>
@@ -325,6 +340,15 @@
     </div>
   </section>
 
+  <section class="card" data-tab="table">
+    <h2>Recent matches</h2>
+    <ul id="history"></ul>
+    <div class="row" style="margin-top:10px">
+      <button class="ghost small" id="newSeason">New season</button>
+      <span class="meta" id="startTokensNote" style="align-self:center"></span>
+    </div>
+  </section>
+
   <section class="card" id="boardCard" data-tab="table">
     <h2>Leaderboard</h2>
     <div class="row" style="margin-bottom:8px">
@@ -339,15 +363,6 @@
     </div>
     <ul id="board" class="ladder"></ul>
     <p class="meta" id="boardTotals" style="margin-bottom:0"></p>
-  </section>
-
-  <section class="card" data-tab="results">
-    <h2>Results</h2>
-    <ul id="history"></ul>
-    <div class="row" style="margin-top:10px">
-      <button class="ghost small" id="newSeason">New season</button>
-      <span class="meta" id="startTokensNote" style="align-self:center"></span>
-    </div>
   </section>
 
   <section class="card" id="groupTab" data-tab="group">
@@ -406,9 +421,8 @@
   <p class="links" data-tab="group"><button class="link" id="renameBtn">Rename group</button> · <button class="link" id="leaveGroup">Leave group</button></p>
 
   <nav class="tabs" id="tabs" aria-label="Sections">
-    <button data-show="play" class="on">Play</button>
+    <button data-show="play" class="on">Match</button>
     <button data-show="table">Table</button>
-    <button data-show="results">Results</button>
     <button data-show="group">Group</button>
   </nav>
   </div>
@@ -419,7 +433,7 @@
     <div class="huge" id="winnerWho"></div>
     <div class="small" id="winnerWins"></div>
     <ul id="winnerExtras" style="width:100%;max-width:360px;margin:8px 0"></ul>
-    <button class="big" id="winnerClose" style="width:100%;max-width:360px">Play again</button>
+    <button class="big" id="winnerClose" style="width:100%;max-width:360px">Next match</button>
   </div>
   <div class="err" id="err"></div>
   <a class="coffee hidden" id="coffee" target="_blank" rel="noopener">Enjoying Corners? Buy me a coffee ☕</a>
@@ -646,7 +660,7 @@ async function refresh() {
 }
 
 // How to play shows by itself the first time a phone opens Corners, and from the ? button after.
-let showHowto = !stored('corners-howto-seen');
+let showHowto = false; // the rules are a tap away, never in the way
 let joining = false; // opened from an invite link and still fetching that group
 let lastHolder = null;
 let wasLive = false;
@@ -684,6 +698,8 @@ function renderGroups() {
   // The + screen only adds a group. With no group yet it's the whole app, so there's nothing to cancel.
   $('moreTitle').textContent = state ? 'Add a group' : 'Get started';
   $('groupsClose').classList.toggle('hidden', !state);
+  $('welcome').classList.toggle('hidden', !!state);
+  $('moreTitle').classList.toggle('hidden', !state);
   if (state) renderAlerts();
   if (state) {
     $('settingsTitle').textContent = state.group.name;
@@ -715,13 +731,24 @@ function renderComps() {
   const next = compById(state.nextComp);
   const few = Object.keys(state.players).length < 2;
   $('compCard').classList.toggle('hidden', live || editing !== 'comp');
-  // Play shows one next step: invite people, start a competition, or set up the match.
+  // The Match tab shows one step at a time: invite, what to play for, pick the match, then stakes.
+  const picking = !live && !few && next && !state.nextMatch;
   $('inviteCard').classList.toggle('hidden', live || !few);
   $('inviteCode').textContent = state.group.code;
+  $('inviteWho').innerHTML = Object.entries(state.players).map(([id, p]) =>
+    `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''}</span><span class="ok">✓ in the group</span></li>`).join('')
+    + '<li class="meta plain">Waiting for more…</li>';
   $('noComp').classList.toggle('hidden', live || few || !!next);
-  $('setup').classList.toggle('hidden', live || few || !next);
+  $('pickCard').classList.toggle('hidden', !picking);
+  $('setup').classList.toggle('hidden', live || few || !next || !state.nextMatch);
   if (next) $('setupFor').textContent = `For ${next.name}`;
-  if (!live && next && fixturesFor == null) loadFixtures();
+  if (picking && fixturesFor == null) loadFixtures();
+  const nm = state.nextMatch;
+  if (nm) {
+    const t = nm.kickoff && new Date(nm.kickoff);
+    $('nextWhen').textContent = t && !isNaN(t) ? `Next match · ${t.toLocaleDateString([], { weekday: 'short' })} ${t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Next match';
+    $('nextLabel').textContent = nm.label;
+  }
   if (document.activeElement !== $('compPick')) {
     $('compPick').innerHTML = open.map((c) =>
       `<option value="${esc(c.id)}"${c.id === state.nextComp ? ' selected' : ''}>${esc(c.name)}</option>`).join('')
@@ -744,7 +771,7 @@ function renderMyStake(meKnown) {
   const amounts = [5, 10, 20].filter((n) => n <= have);
   const chips = amounts.map((n) => ({ n, text: String(n) }));
   if (last && !amounts.includes(last) && last <= have) chips.push({ n: last, text: `${last} like last time` });
-  $('myStake').innerHTML = '<span class="meta" style="align-self:center">You:</span>'
+  $('myStake').innerHTML = ''
     + chips.map(({ n, text }) => `<button data-stake="${n}" class="${now === n ? 'on' : ''}">${text}</button>`).join('')
     + `<button data-stake="" class="${now ? '' : 'on'}">Sit out</button>`;
 }
@@ -795,7 +822,7 @@ function render() {
   if (m && !wasLive) showTab('play'); // a match kicking off brings everyone to it
   if (!m && me && state.players[me]) showResult();
   wasLive = !!m;
-  document.querySelector('#tabs [data-show="play"]').textContent = m ? '● Live' : 'Play';
+  document.querySelector('#tabs [data-show="play"]').textContent = m ? '● Live' : 'Match';
 
   $('livePill').classList.toggle('hidden', !m || Date.now() < m.kickoff);
   $('livePill').textContent = m?.fixtureId === 'manual' ? 'TEST' : 'LIVE';
@@ -866,12 +893,19 @@ function render() {
   } else {
     const editing = document.activeElement?.closest?.('#stakes');
     if (!editing) {
-      // Players using the app set their own stake; only friends without it can be typed in for.
-      $('stakes').innerHTML = Object.entries(state.players).map(([id, p]) =>
-        `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${bal(id)} tokens</span></span>${id === me || !p.phone
-          ? `<input class="stake" type="number" min="0" max="${bal(id)}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${state.pendingStakes[id] ?? ''}" placeholder="—">`
-          : `<span class="meta">${state.pendingStakes[id] ? `${state.pendingStakes[id]} in` : 'not in yet'}</span>`}</li>`).join('')
-        || '<li class="meta plain">Add players below first.</li>';
+      // Who's in: your own stake comes from the chips above, a mate without the app can have
+      // theirs typed in, and everyone else's shows as in or still deciding.
+      $('stakes').innerHTML = Object.entries(state.players).map(([id, p]) => {
+        const n = state.pendingStakes[id];
+        const right = id !== me && !p.phone
+          ? `<input class="stake" type="number" min="0" max="${bal(id)}" inputmode="numeric" aria-label="${esc(p.name)}'s stake" data-id="${id}" value="${n ?? ''}" placeholder="—">`
+          : n ? `<b class="ok">${n}</b>` : `<span class="meta">${id === me ? 'not in yet' : 'deciding…'}</span>`;
+        return `<li><span>${esc(p.name)}${id === me ? ' (you)' : ''} <span class="meta">${bal(id)} tokens</span></span>${right}</li>`;
+      }).join('');
+    }
+    {
+      const staked = Object.values(state.pendingStakes);
+      $('whoTitle').textContent = staked.length ? `Who's in · pot ${staked.reduce((a, b) => a + b, 0)}` : "Who's in";
     }
     const meKnown = me && state.players[me];
     renderMyStake(meKnown);
@@ -895,10 +929,10 @@ function render() {
     const names = Object.values(state.players).map((p) => p.name);
     $('joinTitle').textContent = `Welcome to ${state.group.name}`;
     $('joinWho').textContent = names.length
-      ? `${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)} are` : `${names[0]} is`} playing. Tap your name, or add yours.`
+      ? `${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)} are` : `${names[0]} is`} playing. What's your name?`
       : 'Nobody has joined yet. Add your name to get started.';
     if (!$('joinName').value && document.activeElement !== $('joinName')) $('joinName').value = stored('corners-name') || '';
-    $('joinNames').innerHTML = Object.entries(state.players).map(([id, p]) =>
+    $('joinNames').innerHTML = Object.entries(state.players).filter(([, p]) => !p.phone).map(([id, p]) =>
       `<button class="ghost" data-me="${id}">I'm ${esc(p.name)}</button>`).join('');
   }
   renderComps();
@@ -1002,6 +1036,7 @@ $('leaveGroup').onclick = async () => {
 $('alertsBtn').onclick = () => toggleAlerts().catch((e) => { $('err').textContent = 'Couldn’t set up alerts: ' + e.message; });
 $('labelClear').onclick = () => act('setLabel', { unit: '' });
 
+$('howtoLink').onclick = () => { showHowto = true; render(); scrollTo({ top: 0, behavior: 'smooth' }); };
 $('howtoBtn').onclick = () => { showHowto = !showHowto; render(); if (showHowto) scrollTo({ top: 0, behavior: 'smooth' }); };
 $('howtoClose').onclick = () => { showHowto = false; store('corners-howto-seen', '1'); render(); };
 
@@ -1134,9 +1169,10 @@ function renderFixtures() {
 // The Start button says what it's waiting for, so pressing it never does nothing.
 function renderStart() {
   const staked = Object.keys(state?.pendingStakes || {}).length;
-  $('start').disabled = !picked || staked < 2;
-  $('start').textContent = !picked ? 'Pick a match above'
-    : staked < 2 ? `Needs 2 stakes · ${staked} in` : `Shuffle and start · ${staked} in`;
+  $('start').disabled = staked < 2;
+  $('start').textContent = staked < 2 ? `Needs 2 stakes · ${staked} in` : `Shuffle and start · ${staked} in`;
+  $('pickBtn').disabled = !picked;
+  $('pickBtn').textContent = picked ? `Play ${picked.label}` : 'Tap a match above';
 }
 
 $('fixtureList').onclick = (e) => {
@@ -1170,11 +1206,13 @@ $('quickAdd').onclick = () => {
 $('quickName').onkeydown = (e) => { if (e.key === 'Enter') $('quickAdd').click(); };
 $('winnerClose').onclick = () => { $('winner').classList.add('hidden'); showTab('play'); scrollTo({ top: 0 }); };
 
-$('start').onclick = () => {
+$('start').onclick = () => act('startMatch', { golden: $('golden').checked });
+$('pickBtn').onclick = () => {
   if (!picked) return;
-  act('startMatch', { fixtureId: picked.id, label: picked.label, kickoff: picked.kickoff, golden: $('golden').checked })
+  act('pickMatch', { fixtureId: picked.id, label: picked.label, kickoff: picked.kickoff })
     .then((ok) => { if (ok) { picked = null; renderFixtures(); } });
 };
+$('changeMatch').onclick = () => { fixturesFor = null; act('pickMatch', {}); };
 
 // Errors pop up above the tabs and clear themselves after a few seconds, or with a tap.
 let errTimer = null;

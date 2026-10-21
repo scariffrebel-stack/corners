@@ -8,6 +8,7 @@ const ACTIONS = {
   addPlayer: (s, b) => game.addPlayer(s, b.name),
   removePlayer: (s, b) => { game.checkHost(s, b.me); return game.removePlayer(s, b.id); },
   startMatch: (s, b) => game.startMatch(s, { ...b, stakes: undefined }), // the stakes players set themselves
+  pickMatch: (s, b) => game.pickMatch(s, b),
   corner: (s, b) => game.manualCorner(s, b.delta),
   callCorner: (s, b) => game.callCorner(s, b.me),
   settle: (s) => game.settle(s),
