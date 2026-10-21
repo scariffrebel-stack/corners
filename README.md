@@ -40,6 +40,13 @@ On the Group tab, a group can say what its tokens make, such as "10 tokens = 1 p
 shows beside the pot and how far each player is up or down. It's only for fun between friends:
 the app never sells tokens, takes money or pays anything out.
 
+## Chat and the host
+
+During a match everyone can tap a reaction or send a short line (up to 80 characters), shown with
+their name. The person who set up a group is its host: only they can end a competition, start a
+new season or remove a player, since none of those can be undone. Groups from before this keep
+their first player as host.
+
 ## Alerts
 
 Each phone can turn on alerts per group on the Group tab. Nobody picks matches one by one:

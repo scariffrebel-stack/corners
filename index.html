@@ -93,6 +93,7 @@
   .reactbar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
   .reactbar button { font-size: 22px; padding: 6px 0; background: var(--panel); border: 1px solid var(--line); }
   .reacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 0; }
+  .reacts .said { flex-basis: 100%; border-radius: 10px; }
   .reacts span { background: var(--panel); border-radius: 999px; padding: 3px 10px; font-size: 14px; animation: pop .4s ease-out; }
   @keyframes pop { from { transform: scale(.6); opacity: 0; } }
   .gold { color: var(--accent); font-weight: 600; }
@@ -113,7 +114,7 @@
   #game.newcomer > :not(#join) { display: none !important; }
   /* Group tab: one line per setting; "Change" opens just that one underneath. */
   .line { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
-  .group-name + .line { border-top: 0; }
+  #hostNote + .line { border-top: 0; }
   .line .what { flex: 1; min-width: 0; }
   .line .what b { display: block; font-weight: 600; }
   .edit { padding: 0 0 12px; }
@@ -232,6 +233,10 @@
     </section>
     <section class="card" id="reactCard">
       <div class="reactbar" id="reactBar"></div>
+      <form class="row" id="sayForm" style="margin-top:8px" autocomplete="off">
+        <input id="sayText" maxlength="80" placeholder="Say something…" aria-label="Say something to the group" enterkeyhint="send">
+        <button class="small" type="submit">Send</button>
+      </form>
       <div class="reacts" id="reacts"></div>
     </section>
     <section class="card hidden" id="sideCard">
@@ -346,7 +351,8 @@
   </section>
 
   <section class="card" id="groupTab" data-tab="group">
-    <p class="group-name" id="settingsTitle">This group</p>
+    <p class="group-name" id="settingsTitle" style="margin:0">This group</p>
+    <p class="meta" id="hostNote" style="margin:0 0 4px"></p>
     <div class="line"><div class="what"><b>Invite friends</b><span class="meta">Join code <span class="code" id="groupCode"></span></span></div><button class="small" id="groupInvite">Send invite</button></div>
     <div class="line"><div class="what"><b>Playing for</b><span class="meta" id="compNote"></span></div><button class="ghost small" data-edit="comp">Change</button></div>
       <div id="compCard" class="edit hidden">
@@ -645,6 +651,8 @@ let joining = false; // opened from an invite link and still fetching that group
 let lastHolder = null;
 let wasLive = false;
 let showGroups = false;
+// Only the host ends competitions or removes players; everyone else doesn't see those buttons.
+const isHost = () => !!me && state?.host === me;
 let editing = null; // the one Group tab setting open for changing: 'comp' or 'label'
 let me = groupId ? stored('corners-me:' + groupId) : null;
 function setMe(id) {
@@ -679,6 +687,7 @@ function renderGroups() {
   if (state) renderAlerts();
   if (state) {
     $('settingsTitle').textContent = state.group.name;
+    $('hostNote').textContent = state.host ? (isHost() ? 'You set up this group, so only you can end a competition or remove a player.' : `Set up by ${name(state.host)}, who can end a competition or remove a player.`) : '';
     $('groupCode').textContent = state.group.code;
     $('labelClear').classList.toggle('hidden', !state.label);
     $('labelNote').textContent = state.label ? `${state.label.per} tokens = 1 ${state.label.unit}` : 'Not set yet, e.g. 10 tokens = 1 pint';
@@ -719,7 +728,7 @@ function renderComps() {
       || '<option value="">Start a competition below</option>';
   }
   $('compPick').disabled = open.length < 2;
-  $('compEnd').classList.toggle('hidden', !next);
+  $('compEnd').classList.toggle('hidden', !next || !isHost());
   $('compNote').textContent = live ? 'Can change once the live match is over' : next ? (next.name === KIND[next.kind] ? compLine(next) : `${next.name} · ${compLine(next)}`) : 'Nothing yet. Tap Change to start a season, tournament or one-off match.';
   if (!next) $('compNew').open = true;
   $('compDates').classList.toggle('hidden', $('compKind').value !== 'tournament');
@@ -837,8 +846,11 @@ function render() {
     if (!$('reactBar').children.length) {
       $('reactBar').innerHTML = REACTIONS.map((e) => `<button data-react="${e}" aria-label="React ${e}">${e}</button>`).join('');
     }
-    const recent = (m.reactions || []).filter((r) => Date.now() - r.at < 120000).slice(-10).reverse();
-    $('reacts').innerHTML = recent.map((r) => `<span>${esc(name(r.id))} ${r.emoji}</span>`).join('');
+    // Emoji fade after 2 minutes; something said stays up for 10.
+    const recent = (m.reactions || []).filter((r) => Date.now() - r.at < (r.text ? 600000 : 120000)).slice(-10).reverse();
+    $('reacts').innerHTML = recent.map((r) => r.text
+      ? `<span class="said"><b>${esc(r.id === me ? 'You' : name(r.id))}</b> ${esc(r.text)}</span>`
+      : `<span>${esc(name(r.id))} ${r.emoji}</span>`).join('');
     const log = [...(m.log || [])].reverse();
     $('matchLog').innerHTML = log.map((e) => {
       const when = e.minute ? `${esc(e.minute)} · ` : '';
@@ -893,6 +905,7 @@ function render() {
   renderComps();
   const v = compById(viewComp) || compById(m?.compId) || compById(state.nextComp) || state.competitions[0];
   $('startTokensNote').textContent = `Everyone starts on ${state.startTokens}`;
+  $('newSeason').classList.toggle('hidden', !isHost());
   $('tableTitle').textContent = v ? `${v.name} table` : 'Table';
   $('compViewRow').classList.toggle('hidden', state.competitions.length < 2);
   $('compView').innerHTML = state.competitions.map((c) =>
@@ -904,7 +917,7 @@ function render() {
   }
   const rows = v ? v.table : [];
   $('table').innerHTML = rows.map(({ id, tokens }, i) =>
-    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}<br>${upDown(tokens, v.startTokens)}</span><span><span class="tok">${tokens}</span>${v.status === 'open' ? ` <button class="ghost small" data-remove="${id}" title="Remove">✕</button>` : ''}</span></li>`).join('')
+    `<li><span>${i + 1}. ${esc(name(id))}${id === me ? ' (you)' : ''}<br>${upDown(tokens, v.startTokens)}</span><span><span class="tok">${tokens}</span>${v.status === 'open' && isHost() && id !== state.host ? ` <button class="ghost small" data-remove="${id}" title="Remove">✕</button>` : ''}</span></li>`).join('')
     || '<li class="meta plain">No players yet.</li>';
 
   renderBoard(v);
@@ -1130,6 +1143,11 @@ $('date').onchange = loadFixtures;
 $('testMatch').onclick = () => { picked = TEST_MATCH; $('otherDay').open = false; renderFixtures(); };
 
 $('callCorner').onclick = () => act('callCorner');
+$('sayForm').onsubmit = (e) => {
+  e.preventDefault();
+  const text = $('sayText').value.trim();
+  if (text) act('say', { text }).then((ok) => { if (ok) $('sayText').value = ''; });
+};
 $('myStake').onclick = (e) => {
   const b = e.target.closest('button[data-stake]');
   if (b) act('setStake', { id: me, stake: b.dataset.stake === '' ? '' : Number(b.dataset.stake) });
