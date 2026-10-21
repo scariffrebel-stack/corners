@@ -320,12 +320,29 @@ test('a golden corner that never comes leaves the whole pot to the holder', () =
 
 test('a group can say what its tokens stand for, or clear it', () => {
   const s = g.emptyState();
+  const label = () => g.compLabel(s, s.competitions[s.nextComp]);
   g.setLabel(s, ' pint ', 10);
-  assert.deepEqual(s.label, { unit: 'pint', per: 10 });
+  assert.deepEqual(label(), { unit: 'pint', per: 10 });
   assert.throws(() => g.setLabel(s, 'pint', 0), /how many tokens/);
   assert.throws(() => g.setLabel(s, 'pint', 2.5), /how many tokens/);
   g.setLabel(s, '', '');
-  assert.equal(s.label, undefined);
+  assert.equal(label(), null);
+});
+
+test('each competition has its own prize, and a new one suggests the last', () => {
+  const s = g.emptyState();
+  const one = g.createCompetition(s, { kind: 'match', unit: 'coffee', per: 20 });
+  assert.deepEqual(g.compLabel(s, s.competitions[one]), { unit: 'coffee', per: 20 });
+  const season = g.createCompetition(s, { kind: 'season' });
+  assert.deepEqual(s.competitions[season].label, { unit: 'coffee', per: 20 }, 'carries on from the last one');
+  g.setLabel(s, 'lunch', 50);
+  assert.deepEqual(s.competitions[season].label, { unit: 'lunch', per: 50 }, 'sets the next competition');
+  assert.deepEqual(s.competitions[one].label, { unit: 'coffee', per: 20 }, 'leaves the others alone');
+  const plain = g.createCompetition(s, { kind: 'match', unit: '' });
+  assert.equal(s.competitions[plain].label, null);
+  g.setLabel(s, '', '', season);
+  assert.equal(s.competitions[season].label, null);
+  assert.throws(() => g.createCompetition(s, { kind: 'match', unit: 'pint', per: 0 }), /how many tokens/);
 });
 
 test('a group can be renamed but never left without a name', () => {

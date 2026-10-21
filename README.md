@@ -50,8 +50,10 @@ later) and golden corners are counted too. Everything is worked out from the sav
 
 ## What do Tokens make
 
-On the Group tab, a group can say what its tokens make, such as "10 tokens = 1 pint". It
-shows beside the pot and how far each player is up or down. It's only for fun between friends:
+Tokens are just the score, so each competition says what they make: "20 tokens = 1 coffee" for a
+one-off match, or "50 tokens = 1 lunch" for a season. Set it when you start a competition (it
+suggests the last one), or change it for the next competition under **Tokens make** on the Group
+tab. It shows beside the pot and how far each player is up or down. It's only for fun between friends:
 the app never sells tokens, takes money or pays anything out.
 
 ## Chat and the host
