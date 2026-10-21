@@ -6,20 +6,21 @@ import { sendAlert, sendMatchAlerts } from '../lib/push.js';
 
 const ACTIONS = {
   addPlayer: (s, b) => game.addPlayer(s, b.name),
-  removePlayer: (s, b) => game.removePlayer(s, b.id),
+  removePlayer: (s, b) => { game.checkHost(s, b.me); return game.removePlayer(s, b.id); },
   startMatch: (s, b) => game.startMatch(s, { ...b, stakes: undefined }), // the stakes players set themselves
   corner: (s, b) => game.manualCorner(s, b.delta),
   callCorner: (s, b) => game.callCorner(s, b.me),
   settle: (s) => game.settle(s),
   abandon: (s) => game.abandon(s),
-  newSeason: (s, b) => game.newSeason(s, b.startTokens),
+  newSeason: (s, b) => { game.checkHost(s, b.me); return game.newSeason(s, b.startTokens); },
   createCompetition: (s, b) => game.createCompetition(s, b),
   setNextComp: (s, b) => game.setNextComp(s, b.id),
-  endCompetition: (s, b) => game.endCompetition(s, b.id),
+  endCompetition: (s, b) => { game.checkHost(s, b.me); return game.endCompetition(s, b.id); },
   setStake: (s, b) => game.setStake(s, b.id, b.stake, b.me ?? null),
   setGuess: (s, b) => game.setGuess(s, b.id, b.guess, b.stake, b.me ?? null),
   claim: () => {}, // picking a name; the claim itself is below
   react: (s, b) => game.react(s, b.id, b.emoji),
+  say: (s, b) => game.say(s, b.me, b.text),
   setLabel: (s, b) => game.setLabel(s, b.unit, b.per),
   renameGroup: (s, b) => game.renameGroup(s, b.name),
   subscribe: (s, b) => game.subscribe(s, b.id, b.sub),

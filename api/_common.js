@@ -1,6 +1,6 @@
 import { load, save, NoGroupError } from '../lib/store.js';
 import { GameError } from '../lib/game.js';
-import { applyFeed, holderId, pot, cornerCount, sidePot, closestIds, closeFinished, standings, goldenId, goldenShare } from '../lib/game.js';
+import { applyFeed, hostId, holderId, pot, cornerCount, sidePot, closestIds, closeFinished, standings, goldenId, goldenShare } from '../lib/game.js';
 import { cornersFor } from '../lib/feed.js';
 import { playerStats } from '../lib/stats.js';
 import { pushKey, sendMatchAlerts } from '../lib/push.js';
@@ -54,6 +54,7 @@ export function view(state, me) {
   return {
     group: { id: state.group.id, name: state.group.name, code: state.group.code },
     players: state.players,
+    host: hostId(state),
     former: state.former || {}, // names of players who have left, for old results
     pendingStakes: state.pendingStakes || {},
     pendingGuesses: hiddenGuesses(state, me),

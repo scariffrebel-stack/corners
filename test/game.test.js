@@ -399,3 +399,26 @@ test('results keep the names of who won, even after they leave the group', () =>
   g.removePlayer(s, ben);
   assert.equal(s.former[ben], 'Ben');
 });
+
+test('only the host ends a competition or removes a player', () => {
+  const { state: s, playerId: ann } = g.newGroup('Pub', 100, 'Ann');
+  const ben = g.addPlayer(s, 'Ben');
+  assert.equal(g.hostId(s), ann);
+  assert.throws(() => g.checkHost(s, ben), /Only Ann, who set up the group/);
+  g.checkHost(s, ann);
+  assert.throws(() => g.removePlayer(s, ann), /you stay in it/);
+  delete s.host; // a group from before hosts: its first player is the host
+  assert.equal(g.hostId(s), ann);
+});
+
+test('a short line said during the match shows with the reactions', () => {
+  const { s, ids } = setup();
+  assert.throws(() => g.say(s, ids[0], 'hi'), /No match/);
+  g.startMatch(s, { fixtureId: '1', stakes: { [ids[0]]: 1, [ids[1]]: 1 } }, noShuffle, 0);
+  g.say(s, ids[0], '  what   a corner  ', 1000);
+  g.say(s, ids[0], 'again', 1500); // too quick, dropped
+  assert.throws(() => g.say(s, ids[1], '   ', 5000), /Say something/);
+  g.say(s, ids[1], 'x'.repeat(200), 5000);
+  assert.deepEqual(s.match.reactions.map((r) => r.text.length), [13, 80]);
+  assert.equal(s.match.reactions[0].text, 'what a corner');
+});
