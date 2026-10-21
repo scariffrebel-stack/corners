@@ -143,7 +143,6 @@
   <header>
     <h1><svg class="logo" width="34" height="34" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><rect width="160" height="160" rx="34" fill="#0b1f14"/><path d="M115.2 50.4A46 46 0 0 0 97.1 37.3M92.6 35.8A46 46 0 0 0 72.6 34.6M67.9 35.6A46 46 0 0 0 50.2 44.9M46.7 48.2A46 46 0 0 0 36.4 65.4M35.1 70A46 46 0 0 0 35.1 90M36.4 94.6A46 46 0 0 0 46.7 111.8M50.2 115.1A46 46 0 0 0 67.9 124.4M72.6 125.4A46 46 0 0 0 92.6 124.2" stroke="#ffd23f" stroke-width="16" fill="none"/><path d="M91.9 109.7L120 104.5 102.4 135.7Z" fill="#ffd23f" stroke="#ffd23f" stroke-width="3" stroke-linejoin="round"/><path d="M80 104V52" stroke="#eaf3ec" stroke-width="4" stroke-linecap="round"/><path d="M80 54L108 62 80 72Z" fill="#eaf3ec"/></svg>CORNERS</h1>
     <div class="row" style="align-items:center">
-      <span class="pill hidden" id="livePill">LIVE</span>
       <button class="ghost small" id="howtoBtn" aria-label="How to play">?</button>
     </div>
   </header>
@@ -195,7 +194,7 @@
           <button id="joinCodeBtn">Join</button>
         </div>
       </details>
-      <p class="tip">Tip: add Corners to your home screen (Share, then Add to Home Screen) so this phone remembers your groups. If you opened the link inside WhatsApp, open it in Safari or Chrome first.</p>
+      <p class="tip" id="homeTip">Tip: add Corners to your home screen (Share, then Add to Home Screen) so this phone remembers your groups. If you opened the link inside WhatsApp, open it in Safari or Chrome first.</p>
       <p style="text-align:center;margin:12px 0 0"><button class="link" id="howtoLink">How to play</button></p>
   </section>
 
@@ -313,7 +312,7 @@
     <div class="chips hidden" id="myStake"></div>
     <h2 id="whoTitle" style="margin-top:14px">Who's in</h2>
     <ul id="stakes"></ul>
-    <p class="meta" style="margin:6px 0 0" id="stakeNote">Only you can change your stake. A mate without the app can have theirs typed in.</p>
+    <p class="meta" style="margin:6px 0 0" id="stakeNote">A mate without the app can have their stake typed in here. Everyone else sets their own.</p>
     <div class="row" style="margin-top:12px"><button class="big" id="start">Shuffle and start</button></div>
     <details id="extras" style="margin-top:8px">
       <summary>Extras: side pot and golden corner</summary>
@@ -340,26 +339,23 @@
   <section class="card" data-tab="table">
     <h2>Recent matches</h2>
     <ul id="history"></ul>
-    <div class="row" style="margin-top:10px">
-      <button class="ghost small" id="newSeason">New season</button>
-      <span class="meta" id="startTokensNote" style="align-self:center"></span>
-    </div>
   </section>
 
   <section class="card" id="boardCard" data-tab="table">
-    <h2>Leaderboard</h2>
+    <details id="moreStats">
+    <summary>More stats: win rate, flags, guesses, streaks</summary>
     <div class="row" style="margin-bottom:8px">
       <select id="boardScope" aria-label="Leaderboard for"><option value="comp">This competition</option><option value="all">All time</option></select>
     </div>
     <div class="chips" id="boardSort">
-      <button data-sort="net" class="on">Tokens won</button>
-      <button data-sort="winRate">Win rate</button>
+      <button data-sort="winRate" class="on">Win rate</button>
       <button data-sort="flags">Flags</button>
       <button data-sort="guesser">Best guesser</button>
       <button data-sort="streak">Streaks</button>
     </div>
     <ul id="board" class="ladder"></ul>
     <p class="meta" id="boardTotals" style="margin-bottom:0"></p>
+    </details>
   </section>
 
   <section class="card" id="groupTab" data-tab="group">
@@ -528,7 +524,7 @@ async function toggleAlerts() {
   render();
 }
 
-let boardSort = 'net';
+let boardSort = 'winRate';
 let boardScope = 'comp';
 const BOARDS = {
   net: { rank: (s) => s.net, show: (s) => `${s.net > 0 ? '+' : ''}${s.net}${worth(s.net) ? ` <span class="meta">${worth(s.net)}</span>` : ''}` },
@@ -542,7 +538,7 @@ const BOARDS = {
 };
 function renderBoard(v) {
   const st = boardScope === 'all' ? state.stats.all : v && state.stats.byComp[v.id];
-  if (!st) { $('boardCard').classList.add('hidden'); return; }
+  if (!st || !state.stats.all?.totals?.matches) { $('boardCard').classList.add('hidden'); return; }
   $('boardCard').classList.remove('hidden');
   $('boardScope').options[0].textContent = v ? v.name : 'This competition';
   $('boardScope').value = boardScope;
@@ -702,11 +698,12 @@ function renderGroups() {
   $('howto').classList.toggle('hidden', !showHowto);
   const open = (showGroups || !groupId) && !joining;
   $('joiningNote').classList.toggle('hidden', !joining);
-  $('groups').classList.toggle('hidden', !open);
+  $('groups').classList.toggle('hidden', !open || showHowto);
   // The + screen only adds a group. With no group yet it's the whole app, so there's nothing to cancel.
   $('moreTitle').textContent = state ? 'Add a group' : 'Get started';
   $('groupsClose').classList.toggle('hidden', !state);
   $('welcome').classList.toggle('hidden', !!state);
+  $('homeTip').classList.toggle('hidden', !!state);
   $('moreTitle').classList.toggle('hidden', !state);
   if (state) renderAlerts();
   if (state) {
@@ -829,7 +826,6 @@ function showResult() {
   const extras = [];
   if (last.golden?.winner) extras.push(`★ Golden corner ${last.golden.corner}: ${name(last.golden.winner)} +${last.golden.bonus}`);
   if (last.sidePot) extras.push(`Side pot ${last.sidePot}: ${last.guessWinners.map(name).join(' and ')}`);
-  extras.push(`Table: ${(last.comp.table || []).slice(0, 3).map((r, i) => `${i + 1}. ${name(r.id)} ${r.tokens}`).join(' · ')}`);
   $('winnerExtras').innerHTML = extras.map((t) => `<li class="plain"><span>${esc(t)}</span></li>`).join('');
   $('winner').classList.remove('hidden');
   try { navigator.vibrate?.(mine ? [200, 80, 200, 80, 400] : 120); } catch {}
@@ -846,8 +842,6 @@ function render() {
   wasLive = !!m;
   document.querySelector('#tabs [data-show="play"]').textContent = m ? '● Live' : 'Match';
 
-  $('livePill').classList.toggle('hidden', !m || Date.now() < m.kickoff);
-  $('livePill').textContent = m?.fixtureId === 'manual' ? 'TEST' : 'LIVE';
   if (m) {
     // Only a change within the same match counts: not opening the page, or switching group.
     const thisMatch = `${groupId}|${m.startedAt}`;
@@ -870,11 +864,11 @@ function render() {
     const caller = m.lastCall && Date.now() - m.lastCall.at < 30000 && m.lastCall.by;
     $('callNote').textContent = caller ? `${caller === me ? 'You' : name(caller)} called the last corner. The live feed checks it.`
       : 'Tap the moment the ball goes out. The live feed checks it.';
-    $('backup').classList.toggle('hidden', manual);
+    $('backup').classList.toggle('hidden', manual || !isHost());
     $('feedNote').innerHTML = manual ? 'Test match · tap +1 Corner each time one is awarded' : m.feedError
       ? `<span class="warn">Live feed problem: ${esc(m.feedError)}</span>`
       : before ? `Kicks off ${new Date(m.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      : `Live feed checks every ${state.pollSeconds}s` + (m.ahead ? ` · ${m.ahead} called, waiting for the feed` : '') + (m.manualAdjust ? ` · ${m.manualAdjust > 0 ? '+' : ''}${m.manualAdjust} by hand` : '');
+      : [m.ahead && `${m.ahead} called, waiting for the feed`, m.manualAdjust && `${m.manualAdjust > 0 ? '+' : ''}${m.manualAdjust} by hand`].filter(Boolean).join(' · ');
     const guessed = Object.entries(m.guesses).sort((a, b) => a[1].guess - b[1].guess);
     $('sideCard').classList.toggle('hidden', !guessed.length);
     $('sideTitle').textContent = `Side pot · ${m.sidePot} tokens · closest takes it`;
@@ -882,7 +876,7 @@ function render() {
       const off = g.guess - m.corners;
       return `<li class="${m.closest.includes(id) ? 'holder' : ''}"><span>${esc(name(id))}${id === me ? ' (you)' : ''} · <b>${g.guess}</b></span><span class="meta">${off === 0 ? 'spot on' : `${Math.abs(off)} ${off > 0 ? 'over' : 'under'}`} · ${g.stake} tokens</span></li>`;
     }).join('');
-    $('matchComp').textContent = `For ${compById(m.compId)?.name || 'the competition'}${worth(m.pot) ? ` · pot worth ${worth(m.pot)}` : ''}`;
+    $('matchComp').textContent = worth(m.pot) ? `Pot worth ${worth(m.pot)}` : '';
     const gd = m.golden;
     $('goldenNote').classList.toggle('hidden', !gd);
     if (gd) {
@@ -927,6 +921,8 @@ function render() {
     }
     {
       const staked = Object.values(state.pendingStakes);
+      // The stake rule only matters when a mate without the app needs theirs typed in.
+      $('stakeNote').classList.toggle('hidden', Object.values(state.players).every((p) => p.phone));
       $('whoTitle').textContent = staked.length ? `Who's in · pot ${staked.reduce((a, b) => a + b, 0)}` : "Who's in";
     }
     const meKnown = me && state.players[me];
@@ -959,8 +955,6 @@ function render() {
   }
   renderComps();
   const v = compById(viewComp) || compById(m?.compId) || compById(state.nextComp) || state.competitions[0];
-  $('startTokensNote').textContent = `Everyone starts on ${state.startTokens}`;
-  $('newSeason').classList.toggle('hidden', !isHost());
   $('tableTitle').textContent = v ? `${v.name} table` : 'Table';
   $('compViewRow').classList.toggle('hidden', state.competitions.length < 2);
   $('compView').innerHTML = state.competitions.map((c) =>
@@ -1149,12 +1143,6 @@ $('compEnd').onclick = () => {
 };
 $('compFrom').value = $('compTo').value = new Date().toISOString().slice(0, 10);
 
-$('newSeason').onclick = () => {
-  const v = prompt("New season: the current season ends with its table kept, and everyone starts again. Starting tokens for each player?", String(state.startTokens));
-  if (v === null) return;
-  viewComp = null;
-  act('newSeason', { startTokens: Number(v) });
-};
 
 $('add').onclick = () => {
   const n = $('newName').value.trim();

@@ -32,7 +32,7 @@ the table) and Group.
 
 Every match is played for a competition, and each competition has its own tokens:
 
-- **Season:** runs until you end it, or until you tap **New season**. Most tokens at the end wins.
+- **Season:** runs until the organiser ends it, then you start a new one under **Playing for**. Most tokens at the end wins.
 - **Tournament:** a run of days, such as one weekend or a cup run. Only matches on those days count,
   and it ends by itself after the last day.
 - **One-off match:** a single game with its own tokens, over at full time.
@@ -43,8 +43,8 @@ before competitions carries on as its first season, with every balance and resul
 
 ## Leaderboards and running totals
 
-The leaderboard ranks players for the competition you're looking at, or for all time across every
-competition in the group: tokens won, win rate, flags won, best corner guesser and streaks, with
+Under **More stats** on the Table, the leaderboard ranks players for the competition you're looking at, or for all time across every
+competition in the group: win rate, flags won, best corner guesser and streaks, with
 each player's last five results. Late steals (the flag reaching the winner in the 90th minute or
 later) and golden corners are counted too. Everything is worked out from the saved results.
 
@@ -80,7 +80,7 @@ alerts section stays hidden.
 
 ## Rules
 
-1. Everyone starts the season with the same tokens (100 unless you pick another amount under New season). Most tokens at the end of the season wins.
+1. Everyone starts the season with the same tokens (100 unless you pick another amount when you start it). Most tokens at the end of the season wins.
 2. Each player picks their own stake for a match on their own phone, from 1 token up to their balance. No stake means sitting it out. Once you have picked your name on a phone, nobody else can change your stake; a friend at the table without the app can have theirs typed in for them.
 3. At the start the order is shuffled and the first player in it holds the flag.
 4. Every corner to either team, stoppage time included, moves the flag one place along.
