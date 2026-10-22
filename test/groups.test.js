@@ -53,3 +53,12 @@ test('the original group is moved into a season once, and keeps that season', as
   assert.equal(again.nextComp, first.nextComp);
   assert.equal(g.balance(again, 'a'), 140);
 });
+
+test('deleting a group removes it and its join code', async () => {
+  const { state } = g.newGroup('Doomed', '', 'Ann');
+  await createGroup(state, 'Doomed');
+  const { deleteGroup } = await import('../lib/store.js');
+  await deleteGroup(state);
+  await assert.rejects(load(state.group.id), NoGroupError);
+  await assert.rejects(findGroup(state.group.code), NoGroupError);
+});

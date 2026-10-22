@@ -1,6 +1,6 @@
 // Setting up a new group, and finding one from its join code.
-import { createGroup, findGroup } from '../lib/store.js';
-import { newGroup } from '../lib/game.js';
+import { createGroup, findGroup, load, deleteGroup } from '../lib/store.js';
+import { newGroup, checkHost, GameError } from '../lib/game.js';
 import { view, send, sendError, readBody } from './_common.js';
 
 export default async function handler(req, res) {
@@ -16,6 +16,17 @@ export default async function handler(req, res) {
       return send(res, 200, { ...view(state, playerId), result: playerId });
     }
     if (body.type === 'join') return send(res, 200, view(await findGroup(body.code)));
+    if (body.type === 'delete') {
+      // Only whoever set the group up, and only by typing its name, since it can't be undone.
+      const state = await load(body.g);
+      checkHost(state, body.me);
+      if (state.match) throw new GameError('Finish or call off the live match first');
+      if (String(body.confirm || '').trim().toLowerCase() !== state.group.name.trim().toLowerCase()) {
+        throw new GameError(`Type ${state.group.name} exactly to delete it`);
+      }
+      await deleteGroup(state);
+      return send(res, 200, { ok: true });
+    }
     send(res, 400, { error: 'Unknown action' });
   } catch (e) {
     sendError(res, e);
