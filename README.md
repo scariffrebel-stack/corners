@@ -73,6 +73,13 @@ alerts section stays hidden.
 6. If the live feed takes a corner back, the flag moves back too.
 7. An abandoned or postponed match has no winner.
 
+### Golden corner
+
+Optional, under **Extra: golden corner** before the match. Tick it and write the prize, like "a packet
+of crisps". At kick-off a secret corner from 1 to 12 is drawn. Whoever the flag goes to on that
+corner wins the prize, on top of the pot. The number shows once it's been taken, and if the match
+never gets that many corners nobody wins it. It stays on for the next match until it's turned off.
+
 ### During the match
 
 - Anyone can tap **Corner!** the moment the ball goes out, so the flag moves with the TV rather than
