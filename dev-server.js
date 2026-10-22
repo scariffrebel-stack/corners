@@ -16,8 +16,9 @@ http
   .createServer(async (req, res) => {
     const path = req.url.split('?')[0];
     if (routes[path]) return routes[path](req, res);
-    if (path === '/sw.js' || path === '/icon.svg') {
-      res.setHeader('Content-Type', path.endsWith('.js') ? 'text/javascript' : 'image/svg+xml');
+    const types = { '/sw.js': 'text/javascript', '/icon.svg': 'image/svg+xml', '/manifest.webmanifest': 'application/manifest+json', '/icon-192.png': 'image/png', '/icon-512.png': 'image/png' };
+    if (types[path]) {
+      res.setHeader('Content-Type', types[path]);
       return res.end(await readFile(new URL('.' + path, import.meta.url)));
     }
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

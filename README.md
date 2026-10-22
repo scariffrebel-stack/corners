@@ -58,7 +58,9 @@ Each phone can turn on alerts per group on the Group tab. Nobody picks matches o
   open, so these come as long as one of you is watching in the app.
 - **Teams you follow:** pick teams once. On days they play, you get one nudge at about 10am.
 - Nothing is sent between 11pm and 8am (UK time). On iPhone, alerts only work once Corners has been
-  added to the home screen and opened from there.
+  added to the home screen and opened from there. The bell at the top of the page, a link under the
+  alerts switch and a link on the join screen all open the four steps. While a group is open, the
+  address stays on its invite link, so the home screen icon opens straight into that group.
 
 Alerts need three settings in Vercel (see Set it up). Without them the app works as before, and the
 alerts section stays hidden.
