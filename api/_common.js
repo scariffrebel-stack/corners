@@ -64,6 +64,7 @@ export function view(state, me) {
     label: state.label || null,
     flat: !!state.flat,
     terms: state.terms || null,
+    golden: state.golden || null,
     stats: {
       all: playerStats(Object.values(state.competitions)),
       byComp: Object.fromEntries(Object.values(state.competitions).map((c) => [c.id, playerStats([c])])),
@@ -85,8 +86,8 @@ export function view(state, me) {
       closest: closestIds(m),
       // The golden corner stays secret until it's taken.
       golden: m.golden && (goldenId(m)
-        ? { corner: m.golden.corner, holder: goldenId(m), bonus: goldenShare(m) }
-        : { secret: true, bonus: goldenShare(m) }),
+        ? { corner: m.golden.corner, holder: goldenId(m), bonus: goldenShare(m), prize: m.golden.prize || null }
+        : { secret: true, bonus: goldenShare(m), prize: m.golden.prize || null }),
     },
   };
 }

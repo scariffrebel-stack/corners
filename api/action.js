@@ -19,6 +19,7 @@ const ACTIONS = {
   endCompetition: (s, b) => { game.checkHost(s, b.me); return game.endCompetition(s, b.id); },
   setStake: (s, b) => game.setStake(s, b.id, b.stake, b.me ?? null),
   setTerms: (s, b) => game.setTerms(s, b.text),
+  setGolden: (s, b) => game.setGolden(s, !!b.on, b.prize),
   setIn: (s, b) => game.setIn(s, b.id, !!b.in, b.me ?? null),
   setGuess: (s, b) => game.setGuess(s, b.id, b.guess, b.stake, b.me ?? null),
   claim: () => {}, // picking a name; the claim itself is below

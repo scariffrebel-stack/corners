@@ -498,3 +498,22 @@ test('saying you are in starts a season if every competition has finished', () =
   assert.throws(() => g.setIn(s, ids[0], false), /live match/);
   assert.throws(() => g.setTerms(s, 'x'), /live match/);
 });
+
+test('golden corner with one stake: a written prize, and the pot stays whole', () => {
+  const { s, ids } = setup();
+  for (const id of ids) g.setIn(s, id, true);
+  g.setGolden(s, true, '  a packet  of crisps ');
+  assert.deepEqual(s.golden, { prize: 'a packet of crisps' });
+  g.startMatch(s, { fixtureId: '1' }, noShuffle);
+  assert.equal(s.match.golden.prize, 'a packet of crisps');
+  const n = s.match.golden.corner;
+  assert.equal(g.goldenShare(s.match), 0);
+  const r = g.applyFeed(s, { corners: n, status: 'FT' });
+  assert.equal(r.golden.winner, ids[n % 3]);
+  assert.equal(r.golden.prize, 'a packet of crisps');
+  assert.equal(r.golden.bonus, 0);
+  // It carries on to the next match until turned off.
+  assert.ok(s.golden);
+  g.setGolden(s, false);
+  assert.equal(s.golden, null);
+});

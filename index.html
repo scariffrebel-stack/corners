@@ -133,9 +133,9 @@
   details.choice[open] summary { margin-bottom: 10px; }
   .group-block { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
   button.link { background: none; border: 0; padding: 0; min-height: 0; color: var(--accent); font: inherit; text-decoration: underline; }
-  #groups details summary, #groupTab details summary, #otherDay summary, #ownMatch summary, #extras summary { color: var(--soft); justify-content: space-between; }
-  #groups details summary::after, #groupTab details summary::after, #otherDay summary::after, #ownMatch summary::after, #extras summary::after { content: '+'; font-size: 22px; color: var(--muted); }
-  #groups details[open] summary::after, #groupTab details[open] summary::after, #otherDay[open] summary::after, #ownMatch[open] summary::after, #extras[open] summary::after { content: '−'; }
+  #groups details summary, #groupTab details summary, #otherDay summary, #ownMatch summary, #goldenBox summary, #extras summary { color: var(--soft); justify-content: space-between; }
+  #groups details summary::after, #groupTab details summary::after, #otherDay summary::after, #ownMatch summary::after, #goldenBox summary::after, #extras summary::after { content: '+'; font-size: 22px; color: var(--muted); }
+  #groups details[open] summary::after, #groupTab details[open] summary::after, #otherDay[open] summary::after, #ownMatch[open] summary::after, #goldenBox[open] summary::after, #extras[open] summary::after { content: '−'; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
@@ -162,7 +162,8 @@
       <li><b>Every corner passes it on.</b> Each corner to either team moves the flag one place along. The app follows the live match for you.</li>
       <li><b>Hold it at full time, take the pot.</b> Whoever has the flag when the ref blows wins.</li>
     </ol>
-    <p class="meta" style="margin:10px 0 12px">Play a few times with the same mates and a table of who has won most shows up.</p>
+    <p class="meta" style="margin:10px 0 4px"><b>Extra:</b> the golden corner. A secret corner from 1 to 12 wins whoever gets the flag on it a prize you choose.</p>
+    <p class="meta" style="margin:0 0 12px">Play a few times with the same mates and a table of who has won most shows up.</p>
     <button id="howtoClose" style="width:100%">Got it</button>
   </section>
 
@@ -328,6 +329,14 @@
       <input id="quickName" placeholder="Add a mate without a phone" maxlength="30" aria-label="Name of a mate without a phone">
       <button id="quickAdd">Add</button>
     </div>
+    <details id="goldenBox" style="margin-top:8px">
+      <summary id="goldenSummary">Extra: golden corner</summary>
+      <p class="meta" style="margin-top:0">A secret corner from 1 to 12 is drawn at kick-off. Whoever the flag goes to on that corner wins an extra prize, on top of the pot. Nobody knows which corner it is until it happens.</p>
+      <label class="check"><input type="checkbox" id="goldenOn"> Play the golden corner</label>
+      <div class="row">
+        <input id="goldenPrize" maxlength="60" placeholder="The prize, like a packet of crisps" aria-label="Golden corner prize" autocomplete="off">
+      </div>
+    </details>
     <div class="row" style="margin-top:12px"><button class="big" id="start">Draw the order and start</button></div>
     <p class="meta" style="margin:8px 0 0;text-align:center">The order is drawn at random, and the first name starts with the flag.</p>
   </section>
@@ -697,6 +706,10 @@ function renderSetup() {
   document.querySelectorAll('#termsChips button').forEach((b) => b.classList.toggle('on', b.dataset.terms === termsDraft));
   $('termsShow').textContent = state.terms || '';
   if (!live) renderWho();
+  const gd = state.golden;
+  $('goldenSummary').textContent = gd ? `Extra: golden corner · on${gd.prize ? `, for ${gd.prize}` : ''}` : 'Extra: golden corner';
+  $('goldenOn').checked = !!gd;
+  if (document.activeElement !== $('goldenPrize')) $('goldenPrize').value = gd?.prize || '';
 }
 
 // Who's in for the next match. You put yourself in from your own phone; a mate without a phone
@@ -752,7 +765,11 @@ function showResult() {
     if (last.terms) extras.push(`Playing for ${last.terms}`);
     if (others.length) extras.push(`Settle up: ${others.length > 1 ? `${others.slice(0, -1).join(', ')} and ${others.at(-1)}` : others[0]}`);
   }
-  if (last.golden?.winner) extras.push(`★ Golden corner ${last.golden.corner}: ${name(last.golden.winner)} +${last.golden.bonus}`);
+  if (last.flat && last.golden) {
+    extras.push(last.golden.winner
+      ? `★ Golden corner ${last.golden.corner}: ${name(last.golden.winner)} wins ${last.golden.prize || 'bragging rights'}`
+      : `★ Golden corner was ${last.golden.corner}, and it never came`);
+  } else if (last.golden?.winner) extras.push(`★ Golden corner ${last.golden.corner}: ${name(last.golden.winner)} +${last.golden.bonus}`);
   if (last.sidePot) extras.push(`Side pot ${last.sidePot}: ${last.guessWinners.map(name).join(' and ')}`);
   $('winnerClose').textContent = tableOn() ? 'See the table' : 'Same lot, another match';
   $('winnerExtras').innerHTML = extras.map((t) => `<li class="plain"><span>${esc(t)}</span></li>`).join('');
@@ -812,8 +829,10 @@ function render() {
     const gd = m.golden;
     $('goldenNote').classList.toggle('hidden', !gd);
     if (gd) {
+      const prize = m.flat ? (gd.prize || 'bragging rights') : `${gd.bonus}`;
       $('goldenNote').textContent = gd.secret
-        ? `★ Golden corner is hidden in corners 1 to 12 · worth ${gd.bonus}`
+        ? `★ Golden corner is hidden in corners 1 to 12 · ${m.flat ? 'for' : 'worth'} ${prize}`
+        : m.flat ? `★ Golden corner was number ${gd.corner} · ${name(gd.holder)} wins ${prize}`
         : `★ Golden corner was number ${gd.corner} · ${name(gd.holder)} takes ${gd.bonus} at full time`;
     }
     const meIn = me && state.players[me];
@@ -897,7 +916,10 @@ function renderMembers() {
 function resultLines(h) {
   const who = (id) => esc(h.names?.[id] || (state.players[id] || state.former?.[id] ? name(id) : 'A former player'));
   const bonus = h.golden?.winner ? h.golden.bonus : 0;
-  if (h.flat) return [`🚩 ${who(h.winner)} won the pot`, ...(h.terms ? [`<span class="meta">${esc(h.terms)}</span>`] : [])];
+  if (h.flat) {
+    return [`🚩 ${who(h.winner)} won the pot`, ...(h.terms ? [`<span class="meta">${esc(h.terms)}</span>`] : []),
+      ...(h.golden?.winner ? [`<span class="meta">★ ${who(h.golden.winner)} won ${esc(h.golden.prize || 'the golden corner')}</span>`] : [])];
+  }
   const lines = [`🚩 ${who(h.winner)} won <b>${h.pot - bonus}</b>`];
   if (bonus) lines.push(`<span class="meta">★ Golden corner ${h.golden.corner}: ${who(h.golden.winner)} won ${bonus}</span>`);
   if (h.sidePot) lines.push(`<span class="meta">Side pot ${h.sidePot}: ${h.guessWinners.map((id) => `${who(id)} (guessed ${h.guesses[id].guess})`).join(', ')}</span>`);
@@ -1037,6 +1059,11 @@ $('termsSave').onclick = async () => {
   const ok = await act('setTerms', { text });
   if (ok) { editingTerms = false; termsDraft = null; render(); }
 };
+const saveGolden = () => act('setGolden', { on: $('goldenOn').checked, prize: $('goldenPrize').value });
+$('goldenOn').onchange = saveGolden;
+// Typing a prize turns it on, so nobody writes one and forgets to tick the box.
+$('goldenPrize').onchange = () => { if ($('goldenPrize').value.trim()) $('goldenOn').checked = true; if ($('goldenOn').checked) saveGolden(); };
+$('goldenPrize').onkeydown = (e) => { if (e.key === 'Enter') $('goldenPrize').blur(); };
 $('termsChange').onclick = () => { editingTerms = true; termsDraft = null; render(); };
 
 $('add').onclick = () => {
