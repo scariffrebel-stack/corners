@@ -136,6 +136,11 @@
   #groups details summary, #groupTab details summary, #otherDay summary, #ownMatch summary, #goldenBox summary, #extras summary { color: var(--soft); justify-content: space-between; }
   #groups details summary::after, #groupTab details summary::after, #otherDay summary::after, #ownMatch summary::after, #goldenBox summary::after, #extras summary::after { content: '+'; font-size: 22px; color: var(--muted); }
   #groups details[open] summary::after, #groupTab details[open] summary::after, #otherDay[open] summary::after, #ownMatch[open] summary::after, #goldenBox[open] summary::after, #extras[open] summary::after { content: '−'; }
+  /* The golden corner extra: a gold-edged box, lit up when it's on, so nobody misses it. */
+  #goldenBox { border: 1px solid var(--line); border-radius: 12px; padding: 2px 14px 10px; }
+  #goldenBox summary { font-weight: 600; color: var(--text) !important; }
+  #goldenBox.on { border: 2px solid var(--accent); background: rgba(255, 210, 63, .08); }
+  #goldenBox.on summary, #goldenBox.on summary::after { color: var(--accent) !important; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
@@ -329,8 +334,8 @@
       <input id="quickName" placeholder="Add a mate without a phone" maxlength="30" aria-label="Name of a mate without a phone">
       <button id="quickAdd">Add</button>
     </div>
-    <details id="goldenBox" style="margin-top:8px">
-      <summary id="goldenSummary">Extra: golden corner</summary>
+    <details id="goldenBox" style="margin-top:12px">
+      <summary id="goldenSummary">★ Add a golden corner (optional)</summary>
       <p class="meta" style="margin-top:0">A secret corner from 1 to 12 is drawn at kick-off. Whoever the flag goes to on that corner wins an extra prize, on top of the pot. Nobody knows which corner it is until it happens.</p>
       <label class="check"><input type="checkbox" id="goldenOn"> Play the golden corner</label>
       <div class="row">
@@ -707,7 +712,8 @@ function renderSetup() {
   $('termsShow').textContent = state.terms || '';
   if (!live) renderWho();
   const gd = state.golden;
-  $('goldenSummary').textContent = gd ? `Extra: golden corner · on${gd.prize ? `, for ${gd.prize}` : ''}` : 'Extra: golden corner';
+  $('goldenSummary').textContent = gd ? `★ Golden corner is ON${gd.prize ? ` · prize: ${gd.prize}` : ''}` : '★ Add a golden corner (optional)';
+  $('goldenBox').classList.toggle('on', !!gd);
   $('goldenOn').checked = !!gd;
   if (document.activeElement !== $('goldenPrize')) $('goldenPrize').value = gd?.prize || '';
 }
