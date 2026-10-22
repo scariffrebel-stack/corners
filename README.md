@@ -14,7 +14,10 @@ The earlier version, with tokens, competitions, side pots and golden corners, is
 ## Match day
 
 1. **Start a game:** put in your name. The game is called after you, like "Alex's game", and can be renamed.
-2. **Pick the match** from today's fixtures, another day, or a test match.
+2. **Pick the match** from today's fixtures, another day, or a test match. For a local game the feed
+   doesn't have, **enter it yourself**: the two teams and, if you like, the kick-off time. With no
+   feed, anyone watching taps **+1 Corner** each time one is given (two phones tapping the same corner
+   count it once) and **Full time** at the whistle.
 3. **Agree the stake**, the same for everyone. It carries over to the next match, so later games skip this step.
 4. **Send your mates the link** (or read out the 6-letter code). A mate opening it sees who asked them,
    the match and the stake, taps their name, and is in.

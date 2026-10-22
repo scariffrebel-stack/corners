@@ -13,6 +13,7 @@
   :root {
     --bg: #0b1f14; --panel: #12301f; --deep: #0e2719; --line: #1d4430;
     --text: #eaf3ec; --soft: #c9ddcf; --muted: #9fc1aa; --accent: #ffd23f; --bad: #ff8a80;
+    color-scheme: dark; /* date and time pickers draw for a dark page */
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 'Barlow', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -132,9 +133,9 @@
   details.choice[open] summary { margin-bottom: 10px; }
   .group-block { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
   button.link { background: none; border: 0; padding: 0; min-height: 0; color: var(--accent); font: inherit; text-decoration: underline; }
-  #groups details summary, #groupTab details summary, #otherDay summary, #extras summary { color: var(--soft); justify-content: space-between; }
-  #groups details summary::after, #groupTab details summary::after, #otherDay summary::after, #extras summary::after { content: '+'; font-size: 22px; color: var(--muted); }
-  #groups details[open] summary::after, #groupTab details[open] summary::after, #otherDay[open] summary::after, #extras[open] summary::after { content: '−'; }
+  #groups details summary, #groupTab details summary, #otherDay summary, #ownMatch summary, #extras summary { color: var(--soft); justify-content: space-between; }
+  #groups details summary::after, #groupTab details summary::after, #otherDay summary::after, #ownMatch summary::after, #extras summary::after { content: '+'; font-size: 22px; color: var(--muted); }
+  #groups details[open] summary::after, #groupTab details[open] summary::after, #otherDay[open] summary::after, #ownMatch[open] summary::after, #extras[open] summary::after { content: '−'; }
   .code { font: 700 18px 'Barlow Condensed', sans-serif; letter-spacing: .14em; color: var(--accent); }
 </style>
 </head>
@@ -231,7 +232,7 @@
       <button class="big callcorner hidden" id="callCorner">Corner!</button>
       <div class="note hidden" id="callNote">Tap the moment the ball goes out. The live feed checks it.</div>
       <div class="row hidden" id="manualControls" style="width:100%;margin-top:8px">
-        <button class="big" data-act="corner" data-delta="1" style="flex:1">+1 Corner</button>
+        <button class="big" id="manualPlus" style="flex:1">+1 Corner</button>
         <button class="ghost" data-act="corner" data-delta="-1" aria-label="Undo last corner">Undo</button>
         <button class="ghost" data-act="settle" data-confirm="Blow full time and pay the flag holder?">Full time</button>
       </div>
@@ -275,6 +276,19 @@
     <p class="meta" style="margin:0 0 6px" id="fixturesDay">Today's matches</p>
     <ul id="fixtureList" class="fixtures"></ul>
     <select id="fixture" class="hidden" aria-hidden="true"></select>
+    <details id="ownMatch">
+      <summary>A local game? Enter it yourself</summary>
+      <div class="row">
+        <input id="ownHome" placeholder="Home team" maxlength="30" aria-label="Home team">
+        <input id="ownAway" placeholder="Away team" maxlength="30" aria-label="Away team">
+      </div>
+      <div class="row" style="margin-top:8px;align-items:center">
+        <label for="ownTime" class="meta" style="flex:none">Kick-off (optional)</label>
+        <input type="time" id="ownTime" style="flex:none">
+        <button class="ghost small" id="ownUse">Use this match</button>
+      </div>
+      <p class="meta" style="margin:6px 0 0">No live feed for these, so whoever's watching taps +1 Corner each time one is given, and Full time at the whistle.</p>
+    </details>
     <details id="otherDay">
       <summary>Another day, or a test match</summary>
       <div class="row">
@@ -782,7 +796,7 @@ function render() {
     $('callNote').textContent = caller ? `${caller === me ? 'You' : name(caller)} called the last corner. The live feed checks it.`
       : 'Tap the moment the ball goes out. The live feed checks it.';
     $('backup').classList.toggle('hidden', manual || !isHost());
-    $('feedNote').innerHTML = manual ? 'Test match · tap +1 Corner each time one is awarded' : m.feedError
+    $('feedNote').innerHTML = manual ? `${m.label === TEST_MATCH.label ? 'Test match' : 'No live feed'} · tap +1 Corner each time one is given, and Full time at the whistle` : m.feedError
       ? `<span class="warn">Live feed problem: ${esc(m.feedError)}</span>`
       : before ? `Kicks off ${new Date(m.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : [m.ahead && `${m.ahead} called, waiting for the feed`, m.manualAdjust && `${m.manualAdjust > 0 ? '+' : ''}${m.manualAdjust} by hand`].filter(Boolean).join(' · ');
@@ -1032,7 +1046,9 @@ $('add').onclick = () => {
 $('newName').onkeydown = (e) => { if (e.key === 'Enter') $('add').click(); };
 
 // The day's matches load on their own and show as a list, so starting one is a tap.
-const TEST_MATCH = { id: 'manual', label: 'Test match' };
+// Matches the feed doesn't have, a test match or a local game typed in, have their corners tapped in by hand.
+const MANUAL = 'manual';
+const TEST_MATCH = { id: MANUAL, label: 'Test match' };
 const today = () => new Date().toISOString().slice(0, 10);
 let fixtures = null; // null while loading
 let fixturesFor = null; // the day they were loaded for
@@ -1043,7 +1059,7 @@ async function loadFixtures() {
   const day = $('date').value || today();
   fixturesFor = day;
   fixtures = null;
-  if (picked?.id !== TEST_MATCH.id) picked = null;
+  if (picked?.id !== MANUAL) picked = null;
   renderFixtures();
   try {
     const r = await fetch('/api/fixtures?date=' + day);
@@ -1060,7 +1076,7 @@ function renderFixtures() {
   const day = fixturesFor || today();
   $('fixturesDay').textContent = day === today() ? 'Today’s matches'
     : `Matches on ${new Date(day + 'T12:00').toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' })}`;
-  const list = [...(fixtures || []), ...(picked?.id === TEST_MATCH.id ? [TEST_MATCH] : [])];
+  const list = [...(fixtures || []), ...(picked?.id === MANUAL ? [picked] : [])];
   const when = (f) => (f.kickoff ? new Date(f.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'tap corners yourself');
   $('fixtureList').innerHTML = fixtures == null ? '<li class="meta plain">Loading matches…</li>'
     : list.length ? list.map((f) => `<li data-fixture="${esc(f.id)}" class="${picked?.id === f.id ? 'on' : ''}"><span>${esc(f.label)}</span><span class="meta">${when(f)}</span></li>`).join('')
@@ -1079,11 +1095,23 @@ function renderStart() {
 $('fixtureList').onclick = (e) => {
   const li = e.target.closest('li[data-fixture]');
   if (!li) return;
-  picked = [...(fixtures || []), TEST_MATCH].find((f) => String(f.id) === li.dataset.fixture) || null;
+  picked = [...(fixtures || []), ...(picked?.id === MANUAL ? [picked] : [])].find((f) => String(f.id) === li.dataset.fixture) || null;
   renderFixtures();
 };
 $('date').onchange = loadFixtures;
 $('testMatch').onclick = () => { picked = TEST_MATCH; $('otherDay').open = false; renderFixtures(); };
+$('ownUse').onclick = () => {
+  const home = $('ownHome').value.trim(), away = $('ownAway').value.trim();
+  if (!home || !away) { $('err').textContent = 'Put in both teams, like Scariff v Tulla'; return; }
+  const time = $('ownTime').value;
+  // A kick-off time is on the day being shown, so a local game later today counts down like any other.
+  const kickoff = time ? new Date(`${$('date').value || today()}T${time}`).toISOString() : undefined;
+  picked = { id: MANUAL, label: `${home} v ${away}`, kickoff };
+  $('ownMatch').open = false;
+  renderFixtures();
+};
+// With no feed, two people tapping the same corner count it once, like Corner! on a live match.
+$('manualPlus').onclick = () => act('callCorner');
 
 $('callCorner').onclick = () => act('callCorner');
 $('sayForm').onsubmit = (e) => {
