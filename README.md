@@ -27,7 +27,9 @@ The earlier version, with tokens, competitions, side pots and golden corners, is
 Everyone who has played together stays together as a group, so the next match is just pick, share
 and play. The same phone can be in several groups, and the chips under the logo switch between
 them. The Group tab lists the players, who set it up (only they can remove a player), the join
-code, alerts and teams you follow.
+code, alerts and teams you follow. **Leave group** only takes it off your phone. Whoever set the
+group up can also **Delete group**, after typing its name: the group, its players and results are
+gone for everyone, and other phones drop it the next time they open it.
 
 ## The table
 

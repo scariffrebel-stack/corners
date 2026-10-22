@@ -363,7 +363,7 @@
         </div>
       </div>
   </section>
-  <p class="links" data-tab="group"><button class="link" id="renameBtn">Rename group</button> · <button class="link" id="leaveGroup">Leave group</button></p>
+  <p class="links" data-tab="group"><button class="link" id="renameBtn">Rename group</button> · <button class="link" id="leaveGroup">Leave group</button><span id="deleteWrap"> · <button class="link" id="deleteGroup">Delete group</button></span></p>
 
   <nav class="tabs" id="tabs" aria-label="Sections">
     <button data-show="play" class="on">Match</button>
@@ -643,6 +643,7 @@ function renderGroups() {
     $('hostNote').textContent = state.host ? (isHost() ? 'You set this up, so only you can remove a player.' : `Set up by ${name(state.host)}, who can remove a player.`) : '';
     $('groupCode').textContent = state.group.code;
     renderMembers();
+    $('deleteWrap').classList.toggle('hidden', !isHost());
   }
   if (!$('newGroupMe').value && document.activeElement !== $('newGroupMe')) $('newGroupMe').value = stored('corners-name') || '';
   // The home screen shows every group this phone is in, so switching is one tap.
@@ -951,6 +952,21 @@ $('teamList').onclick = (e) => {
 $('leaveGroup').onclick = async () => {
   if (!state || !confirm(`Leave ${state.group.name}? It comes off this phone. You can rejoin any time with the code ${state.group.code}.`)) return;
   if (alertsOn()) await act('unsubscribe', { endpoint: stored('corners-alerts:' + groupId) });
+  store('corners-alerts:' + groupId, null);
+  forgetGroup(groupId);
+  if (groups.length) openGroup(groups[0].id);
+  showGroups = !groupId;
+  refresh();
+};
+// Deleting is for whoever set the group up. It's gone for everyone, so they type its name to be sure.
+$('deleteGroup').onclick = async () => {
+  if (!state || !isHost()) return;
+  if (state.match) { $('err').textContent = 'Finish or call off the live match first'; return; }
+  const typed = prompt(`Delete ${state.group.name} for everyone? Its players and results go too, and it can't be undone. Type ${state.group.name} to confirm.`);
+  if (typed == null) return;
+  const r = await fetch('/api/group', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'delete', pin: pin(), g: groupId, me, confirm: typed }) });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) { $('err').textContent = body.error || 'Couldn’t delete the group'; return; }
   store('corners-alerts:' + groupId, null);
   forgetGroup(groupId);
   if (groups.length) openGroup(groups[0].id);
