@@ -246,7 +246,7 @@
         <line x1="20" y1="8" x2="20" y2="116" stroke="#eaf3ec" stroke-width="5" stroke-linecap="round"></line>
         <path d="M22 10 L84 28 L22 50 Z"></path>
       </svg>
-      <div class="label">HOLDING THE FLAG</div>
+      <div class="label" id="holderLabel">HOLDING THE FLAG</div>
       <div class="who" id="holder"></div>
       <div class="next" id="next"></div>
       <div class="note" id="feedNote"></div>
@@ -361,6 +361,11 @@
     </details>
     <div class="row" style="margin-top:12px"><button class="big" id="start">Draw the order and start</button></div>
     <p class="meta" style="margin:8px 0 0;text-align:center">The order is drawn at random, and the first name starts with the flag.</p>
+  </section>
+
+  <section id="lastCard" class="card hidden" data-tab="play">
+    <h2 id="lastTitle">Last match</h2>
+    <ul id="lastList"></ul>
   </section>
 
   <section class="card" data-tab="table">
@@ -722,8 +727,10 @@ function renderSetup() {
   if (nm) {
     const t = nm.kickoff && new Date(nm.kickoff);
     const when = t && !isNaN(t) ? `${t.toLocaleDateString([], { weekday: 'short' })} ${t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '';
-    $('nextWhen').textContent = when ? `Next match · ${when}` : 'Next match';
-    $('nextLabel').textContent = nm.label;
+    // The first game goes step by step; after that the stake carries over and this is just the next match.
+    const firstGame = !state.competitions.some((c) => c.history.length);
+    $('nextWhen').textContent = firstGame ? 'Step 3 of 3 · Send the link' : when ? `Next match · ${when}` : 'Next match';
+    $('nextLabel').textContent = firstGame && when ? `${nm.label} · ${when}` : nm.label;
     $('termsMatch').textContent = when ? `${nm.label} · ${when}` : nm.label;
   }
   $('termsTitle').textContent = state.terms ? 'The stake' : 'Step 2 of 3 · The stake';
@@ -775,6 +782,19 @@ function flagMoment(m) {
   try { navigator.vibrate?.(mine ? [120, 60, 120, 60, 240] : 60); } catch {}
 }
 
+// "£5 each" -> "£5", so full time can say who owes whom. Stakes like "losers buy a round" stay as words.
+const stakeAmount = (terms) => String(terms || '').match(/^\s*([£$€]\s?\d+(?:\.\d{1,2})?)\s*(?:each|a head|pp)?\s*$/i)?.[1] || null;
+const andList = (xs) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0]);
+function settleLine(h) {
+  const who = (id) => h.names?.[id] || name(id);
+  const others = h.order.filter((id) => id !== h.winner).map(who);
+  if (!others.length) return '';
+  const amount = stakeAmount(h.terms);
+  return amount
+    ? `${andList(others)} ${others.length > 1 ? 'each owe' : 'owes'} ${who(h.winner)} ${amount}`
+    : `${andList(others)} settle${others.length > 1 ? '' : 's'} up with ${who(h.winner)}`;
+}
+
 // Full time: who won and what, shown once on each phone for a recent result.
 const RESULT_SHOW_MS = 30 * 60 * 1000;
 function showResult() {
@@ -790,9 +810,8 @@ function showResult() {
     : `${won} tokens${worth(won, last.comp) ? ` · worth ${worth(won, last.comp)}` : ''}`;
   const extras = [];
   if (last.flat) {
-    const others = last.order.filter((id) => id !== last.winner).map((id) => last.names?.[id] || name(id));
     if (last.terms) extras.push(`Playing for ${last.terms}`);
-    if (others.length) extras.push(`Settle up: ${others.length > 1 ? `${others.slice(0, -1).join(', ')} and ${others.at(-1)}` : others[0]}`);
+    if (settleLine(last)) extras.push(settleLine(last));
   }
   if (last.flat && last.golden) {
     extras.push(last.golden.winner
@@ -800,7 +819,7 @@ function showResult() {
       : `★ Golden corner was ${last.golden.corner}, and it never came`);
   } else if (last.golden?.winner) extras.push(`★ Golden corner ${last.golden.corner}: ${name(last.golden.winner)} +${last.golden.bonus}`);
   if (last.sidePot) extras.push(`Side pot ${last.sidePot}: ${last.guessWinners.map(name).join(' and ')}`);
-  $('winnerClose').textContent = tableOn() ? 'See the table' : 'Same lot, another match';
+  $('winnerClose').textContent = tableOn() ? 'See the table' : 'Done';
   $('winnerExtras').innerHTML = extras.map((t) => `<li class="plain"><span>${esc(t)}</span></li>`).join('');
   $('winner').classList.remove('hidden');
   try { navigator.vibrate?.(mine ? [200, 80, 200, 80, 400] : 120); } catch {}
@@ -826,8 +845,10 @@ function render() {
     }
     lastHolder = { match: thisMatch, id: m.holder };
     const nextId = m.order[(m.order.indexOf(m.holder) + 1) % m.order.length];
-    $('holder').textContent = name(m.holder);
-    $('next').innerHTML = `Next corner passes it to <b>${esc(name(nextId))}</b>`;
+    const mine = m.holder === me;
+    $('holderLabel').textContent = mine ? "YOU'VE GOT THE FLAG" : 'HOLDING THE FLAG';
+    $('holder').textContent = mine ? 'You' : name(m.holder);
+    $('next').innerHTML = `Next corner passes it to <b>${nextId === me ? 'you' : esc(name(nextId))}</b>`;
     $('matchLabel').textContent = shortLabel(m.label);
     $('corners').textContent = m.corners;
     $('potLabel').textContent = m.flat ? 'IN' : 'POT';
@@ -841,7 +862,8 @@ function render() {
     const caller = m.lastCall && Date.now() - m.lastCall.at < 30000 && m.lastCall.by;
     $('callNote').textContent = caller ? `${caller === me ? 'You' : name(caller)} called the last corner. The live feed checks it.`
       : 'Tap the moment the ball goes out. The live feed checks it.';
-    $('backup').classList.toggle('hidden', manual || !isHost());
+    // Anyone playing can fix the feed, so a stuck match doesn't wait on the host's phone.
+    $('backup').classList.toggle('hidden', manual || !(isHost() || m.order.includes(me)));
     $('feedNote').innerHTML = manual ? `${m.label === TEST_MATCH.label ? 'Test match' : 'No live feed'} · tap +1 Corner each time one is given, and Full time at the whistle` : m.feedError
       ? `<span class="warn">Live feed problem: ${esc(m.feedError)}</span>`
       : before ? `Kicks off ${new Date(m.kickoff).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -874,9 +896,9 @@ function render() {
     $('reacts').innerHTML = recent.map((r) => r.text
       ? `<span class="said"><b>${esc(r.id === me ? 'You' : name(r.id))}</b> ${esc(r.text)}</span>`
       : `<span>${esc(name(r.id))} ${r.emoji}</span>`).join('');
-    // In order from kick-off: the flag starts with the first player drawn, and corner 1 passes it on.
+    // Newest corner first, so the latest is in view without scrolling; the draw at kick-off is last.
     const log = m.log || [];
-    $('matchLog').innerHTML = `<li><span>Start · drawn at random</span><span class="meta">flag with ${esc(name(m.order[0]))}</span></li>` + log.map((e) => {
+    $('matchLog').innerHTML = log.map((e) => {
       const when = e.minute ? `${esc(e.minute)} · ` : '';
       const gold = gd && !gd.secret && !e.back && e.n === gd.corner ? ' <span class="gold">★ golden</span>' : '';
       const how = e.by ? ` <span class="meta">(called by ${esc(e.by === me ? 'you' : name(e.by))})</span>`
@@ -884,7 +906,7 @@ function render() {
       return e.back
         ? `<li><span>${when}Corner taken back${how}</span><span class="meta">flag back to ${esc(name(e.holder))}</span></li>`
         : `<li><span>${when}Corner ${e.n}${e.team ? ` · ${esc(e.team)}` : ''}${gold}${how}</span><span class="meta">flag to ${esc(name(e.holder))}</span></li>`;
-    }).join('');
+    }).reverse().join('') + `<li><span>Start · drawn at random</span><span class="meta">flag with ${esc(name(m.order[0]))}</span></li>`;
     $('order').innerHTML = m.order.map((id, i) =>
       `<li class="${id === m.holder ? 'holder' : ''}"><span>${i + 1} · ${esc(name(id))}</span><span class="meta">${m.flat ? (i === 0 ? 'started with it' : '') : m.stakes[id]}</span></li>`).join('');
   } else {
@@ -903,10 +925,12 @@ function render() {
       $('joinMatch').textContent = nm.label;
       $('joinTerms').innerHTML = state.terms ? `Playing for <b>${esc(state.terms)}</b>` : '';
     }
-    $('joinTitle').textContent = nm && !state.match ? 'Which one are you?' : `Welcome to ${state.group.name}`;
+    // Mates without a phone can be picked by name; with none to pick, it just asks yours.
+    const pickable = Object.values(state.players).some((p) => !p.phone);
+    $('joinTitle').textContent = nm && !state.match ? (pickable ? 'Which one are you?' : "What's your name?") : `Welcome to ${state.group.name}`;
     $('joinBtn').textContent = nm && !state.match ? "I'm in" : 'Join';
     $('joinWho').textContent = names.length
-      ? `${names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)} are` : `${names[0]} is`} playing. What's your name?`
+      ? `${andList(names)} ${names.length > 1 ? 'are' : 'is'} playing.${pickable ? ' Tap your name, or type it if you’re new.' : nm && !state.match ? '' : " What's your name?"}`
       : 'Nobody has joined yet. Add your name to get started.';
     if (!$('joinName').value && document.activeElement !== $('joinName')) $('joinName').value = stored('corners-name') || '';
     $('joinNames').innerHTML = Object.entries(state.players).filter(([, p]) => !p.phone).map(([id, p]) =>
@@ -924,6 +948,13 @@ function render() {
     || '<li class="meta plain">No matches yet.</li>';
   renderBoard();
   const recent = state.competitions.flatMap((c) => c.history).sort((a, b) => b.at - a.at).slice(0, 10);
+  // Between matches the Match tab keeps the last result, and every result until the table takes over.
+  const shown = tableOn() ? recent.slice(0, 1) : recent;
+  $('lastCard').classList.toggle('hidden', !!m || !shown.length);
+  $('lastTitle').textContent = shown.length > 1 ? 'Results so far' : 'Last match';
+  $('lastList').innerHTML = shown.map((h) => h.abandoned
+    ? `<li><span>${esc(h.label)}</span><span class="meta">called off</span></li>`
+    : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corner${h.corners === 1 ? '' : 's'} · ${h.flat ? `${h.order.length} in` : `pot ${h.pot}`}</span></span><span style="text-align:right">${[...resultLines(h), ...(h.flat && settleLine(h) ? [`<span class="meta">${esc(settleLine(h))}</span>`] : [])].join('<br>')}</span></li>`).join('');
   $('history').innerHTML = recent.map((h) => h.abandoned
     ? `<li><span>${esc(h.label)}</span><span class="meta">${h.flat ? 'called off' : 'abandoned, stakes refunded'}</span></li>`
     : `<li><span>${esc(h.label)}<br><span class="meta">${h.corners} corner${h.corners === 1 ? '' : 's'} · ${h.flat ? `${h.order.length} in` : `pot ${h.pot}`}</span></span><span style="text-align:right">${resultLines(h).join('<br>')}</span></li>`).join('')
