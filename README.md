@@ -24,7 +24,8 @@ The earlier version, with tokens, competitions, side pots and golden corners, is
 5. **Who's in** shows everyone. You put yourself in or sit out from your own phone; a mate without a
    phone can be added and put in by anyone. Once two are in, **Draw the order and start** goes live.
 6. At full time every phone shows who takes the pot and who owes what, like "Alex owes Ben £5".
-   The result stays on the Match tab until the next match kicks off.
+   The result stays on the Match tab until the next match kicks off. Everyone who played stays in
+   for the next match, so the same lot can go again straight away; anyone can sit out.
 
 ## Groups
 

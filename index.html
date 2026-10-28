@@ -62,7 +62,7 @@
   li.holder .meta { color: var(--bg); }
   button, input, select { font: inherit; border-radius: 10px; border: 1px solid var(--line); min-height: 44px; padding: 10px 12px; background: var(--bg); color: var(--text); }
   button { background: var(--accent); color: var(--bg); border: 0; font-weight: 700; cursor: pointer; }
-  button:disabled { opacity: .45; cursor: default; }
+  button:disabled, button.waiting { opacity: .45; cursor: default; }
   button.big { width: 100%; font: 800 20px 'Barlow Condensed', sans-serif; letter-spacing: .06em; text-transform: uppercase; }
   button.ghost { background: transparent; color: var(--soft); border: 1px solid var(--line); font-weight: 500; }
   button.small { min-height: 36px; padding: 4px 10px; font-size: 14px; }
@@ -1177,7 +1177,8 @@ function renderFixtures() {
 // The Start button says what it's waiting for, so pressing it never does nothing.
 function renderStart() {
   const staked = Object.keys(state?.pendingStakes || {}).length;
-  $('start').disabled = staked < 2;
+  // Not disabled: a tap while it's waiting says what to do, rather than nothing happening.
+  $('start').classList.toggle('waiting', staked < 2);
   $('start').textContent = staked < 2 ? `Needs 2 in · ${staked} so far` : `Draw the order and start · ${staked} in`;
   $('pickBtn').disabled = !picked;
   $('pickBtn').textContent = picked ? `Play ${picked.label}` : 'Tap a match above';
@@ -1218,7 +1219,14 @@ $('quickAdd').onclick = () => {
 $('quickName').onkeydown = (e) => { if (e.key === 'Enter') $('quickAdd').click(); };
 $('winnerClose').onclick = () => { $('winner').classList.add('hidden'); showTab(tableOn() ? 'table' : 'play'); render(); scrollTo({ top: 0 }); };
 
-$('start').onclick = () => act('startMatch');
+$('start').onclick = () => {
+  const ins = state?.pendingStakes || {};
+  if (Object.keys(ins).length >= 2) return act('startMatch');
+  const meOut = me && state.players[me] && !ins[me];
+  $('err').textContent = meOut ? 'Tap I’m in by your name, and get at least one mate in too'
+    : 'At least two need to be in. Mates tap I’m in on their phone, or Put in a mate without one';
+  $('whoTitle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
 $('pickBtn').onclick = () => {
   if (!picked) return;
   act('pickMatch', { fixtureId: picked.id, label: picked.label, kickoff: picked.kickoff })
