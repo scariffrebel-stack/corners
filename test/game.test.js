@@ -517,3 +517,18 @@ test('golden corner with one stake: a written prize, and the pot stays whole', (
   g.setGolden(s, false);
   assert.equal(s.golden, null);
 });
+
+test('one stake for everyone: whoever played stays in for the next match', () => {
+  const { s, ids } = setup();
+  s.flat = true;
+  g.setIn(s, ids[0], true);
+  g.setIn(s, ids[1], true);
+  g.startMatch(s, { fixtureId: '1' }, noShuffle);
+  g.settle(s);
+  assert.deepEqual(Object.keys(s.pendingStakes).sort(), [ids[0], ids[1]].sort());
+  g.setIn(s, ids[1], false); // anyone can still sit out
+  g.setIn(s, ids[2], true);
+  g.startMatch(s, { fixtureId: '2' }, noShuffle);
+  g.abandon(s);
+  assert.deepEqual(Object.keys(s.pendingStakes).sort(), [ids[0], ids[2]].sort());
+});
